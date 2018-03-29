@@ -1,6 +1,7 @@
-
+import os
 from ks3 import user
 from ks3 import handler
+from ks3.encryption import Crypts
 import xml.sax
 
 
@@ -120,6 +121,9 @@ class MultiPartUpload(object):
         self.max_parts = None
         self.is_truncated = False
         self._parts = None
+        self.crypt_context = None
+        self.size_accumulator = 0
+        self.total_size = 0
 
     def __repr__(self):
         return '<MultiPartUpload %s>' % self.key_name
@@ -136,6 +140,9 @@ class MultiPartUpload(object):
             s += '  </Part>\n'
         s += '</CompleteMultipartUpload>'
         return s
+
+    def set_crypt_context(self, crypt):
+        self.crypt_context = crypt
 
     def startElement(self, name, attrs, connection):
         #if name == 'Initiator':
@@ -233,10 +240,21 @@ class MultiPartUpload(object):
             raise ValueError('Part numbers must be greater than zero')
         query_args = 'partNumber=%d&uploadId=%s' % (part_num, self.id)
         key = self.bucket.new_key(self.key_name)
-        key.set_contents_from_file(fp, headers=headers, replace=replace,
+        if self.bucket.connection.local_encrypt:
+            #Get sizes of the whole file and the part
+            fp.seek(0,os.SEEK_END)
+            part_size = fp.tell()
+            self.size_accumulator += part_size
+            fp.seek(0,os.SEEK_SET)
+            if not self.total_size:
+                self.total_size = os.fstat(fp.fileno()).st_size
+            if self.size_accumulator != self.total_size:
+                assert (part_size % 16 == 0), "The part size must be multiples of 16 except the last part in local encrypt mode."
+        response = key.set_contents_from_file(fp, headers=headers, replace=replace,
                                    cb=cb, num_cb=num_cb, md5=md5,
                                    reduced_redundancy=False,
-                                   query_args=query_args, size=size)
+                                   query_args=query_args, size=size, action_info="upload_part",
+                                   crypt_context=self.crypt_context)
         return key
 
     def copy_part_from_key(self, src_bucket_name, src_key_name, part_num,
@@ -295,7 +313,7 @@ class MultiPartUpload(object):
         """
         xml = self.to_xml()
         return self.bucket.complete_multipart_upload(self.key_name,
-                                                     self.id, xml)
+                                                     self.id, xml, crypt_context=self.crypt_context)
 
     def cancel_upload(self):
         """

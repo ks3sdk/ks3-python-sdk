@@ -14,6 +14,7 @@ from ks3.key import Key
 from ks3.multipart import MultiPartUpload, CompleteMultiPartUpload
 from ks3.prefix import Prefix
 from ks3.resultset import ResultSet
+from ks3.encryption import Crypts
 
 class Bucket(object):
 
@@ -196,6 +197,7 @@ class Bucket(object):
             k.handle_encryption_headers(response)
             k.handle_restore_headers(response)
             k.handle_addl_headers(response.getheaders())
+            k.handle_user_metas(response)
             return k, response
         else:
             if response.status == 404:
@@ -513,12 +515,17 @@ class Bucket(object):
 
         headers = ks3.utils.merge_meta(headers, metadata,
                 self.connection.provider)
+        if self.connection.local_encrypt:
+            crypts = Crypts(self.connection.key)
         response = self.connection.make_request('POST', self.name, key_name,
                                                 query_args=query_args,
-                                                headers=headers)
+                                                headers=headers,action_info="init_multi",
+                                                crypt_context = crypts)
         body = response.read()
         if response.status == 200:
             resp = MultiPartUpload(self)
+            if self.connection.local_encrypt:
+                resp.set_crypt_context(crypts)
             h = handler.XmlHandler(resp, self)
             if not isinstance(body, bytes):
                 body = body.encode('utf-8')
@@ -529,7 +536,7 @@ class Bucket(object):
                 response.status, response.reason, body)
 
     def complete_multipart_upload(self, key_name, upload_id,
-                                  xml_body, headers=None):
+                                  xml_body, headers=None, crypt_context=None):
         """
         Complete a multipart upload operation.
         """
@@ -539,7 +546,9 @@ class Bucket(object):
         headers['Content-Type'] = 'text/xml'
         response = self.connection.make_request('POST', self.name, key_name,
                                                 query_args=query_args,
-                                                headers=headers, data=xml_body)
+                                                headers=headers, data=xml_body,
+                                                action_info="complete_multi",
+                                                crypt_context = crypt_context)
         contains_error = False
         body = response.read().decode('utf-8')
         # Some errors will be reported in the body of the response

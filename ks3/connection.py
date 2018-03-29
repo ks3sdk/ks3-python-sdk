@@ -6,6 +6,7 @@
 #  you do not remove any proprietary notices. Your use of this software
 #  code is at your own risk.
 
+import os
 import time
 import urllib
 import xml.sax
@@ -99,7 +100,7 @@ class Connection(object):
 
     def __init__(self, access_key_id, access_key_secret, host="",
             port=80, provider='kss', security_token=None, profile_name=None, path='/',
-            is_secure=False, debug=0, calling_format=SubdomainCallingFormat, domain_mode=False):
+            is_secure=False, debug=0, calling_format=SubdomainCallingFormat, domain_mode=False, local_encrypt=False, local_key_path=""):
         """
         :param access_key_id: 金山云提供的ACCESS KEY ID
         :param access_key_secret: 金山云提供的SECRET KEY ID
@@ -107,6 +108,7 @@ class Connection(object):
         :param port: 请求端口，默认80
         :param is_secure: 是否启用HTTPS，True:启用  False:关闭
         :param domain_mode: 是否使用自定义域名访问，True:是 False:否
+        :param local_encrypt: 是否启用本地加密， True:是 False:否，默认False，如选是，需要配置本地密钥路径
         """
         self.access_key_id = access_key_id
         self.access_key_secret = access_key_secret
@@ -117,6 +119,8 @@ class Connection(object):
         self.path = path
         self.calling_format = calling_format()
         self.domain_mode = domain_mode
+        self.local_encrypt = local_encrypt
+        self.key = ""
         if (self.is_secure):
             self.protocol = 'https'
             if self.port == 80:
@@ -143,9 +147,21 @@ class Connection(object):
         if self.provider.host_header:
             self.host_header = self.provider.host_header
         assert self.host
+        if self.local_encrypt:
+            self.load_key(local_key_path)
+
+    def load_key(self, path):
+        error_msg = "In local_encrypt mode, we need you to indicate the location of your private key. Set value for 'local_key_path' while initiate connection."
+        assert path, error_msg
+        with open(path) as ak_file:
+            assert os.path.getsize(path), "The key file should not be empty"
+            content = ak_file.read()
+            assert len(content.strip()) == 16,"The key's length should be 16"
+            self.key = content
+        
 
     def make_request(self, method, bucket="", key="", data="",
-            headers=None, query_args=None, metadata=None):
+            headers=None, query_args=None, metadata=None, action_info="",crypt_context=None):
         if not headers:
             headers = {}
         if not query_args:
@@ -155,7 +171,8 @@ class Connection(object):
 
         resp = make_request(self.host, self.port, self.access_key_id,
                             self.access_key_secret, method, bucket, key,
-                            query_args, headers, data, metadata, is_secure=self.is_secure, domain_mode=self.domain_mode)
+                            query_args, headers, data, metadata, is_secure=self.is_secure, domain_mode=self.domain_mode, 
+                            action_info=action_info, crypt_context = crypt_context)
         
         return resp
 
