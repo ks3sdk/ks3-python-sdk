@@ -212,7 +212,7 @@ class MultiPartUpload(object):
             return self._parts
 
     def upload_part_from_file(self, fp, part_num, headers=None, replace=True,
-                              cb=None, num_cb=10, md5=None, size=None):
+                              cb=None, num_cb=10, md5=None, size=None, is_last_part="origin"):
         """
         Upload another part of this MultiPart Upload.
 
@@ -244,17 +244,25 @@ class MultiPartUpload(object):
             #Get sizes of the whole file and the part
             fp.seek(0,os.SEEK_END)
             part_size = fp.tell()
-            self.size_accumulator += part_size
             fp.seek(0,os.SEEK_SET)
             if not self.total_size:
                 self.total_size = os.fstat(fp.fileno()).st_size
-            if self.size_accumulator != self.total_size:
+            if part_size == self.total_size:
+                assert is_last_part != "origin", "Please indicate 'is_last_part=False/True' \
+                                                  when calling upload_part_from_file."
+            else:
+                temp_accumulator = self.size_accumulator + part_size
+                if temp_accumulator ==  self.total_size:
+                    is_last_part = True
+            if not is_last_part:
                 assert (part_size % 16 == 0), "The part size must be multiples of 16 except the last part in local encrypt mode."
         response = key.set_contents_from_file(fp, headers=headers, replace=replace,
                                    cb=cb, num_cb=num_cb, md5=md5,
                                    reduced_redundancy=False,
                                    query_args=query_args, size=size, action_info="upload_part",
-                                   crypt_context=self.crypt_context)
+                                   crypt_context=self.crypt_context,is_last_part=is_last_part)
+        # key.set_contents_from_file() raise an exception when fail.
+        self.size_accumulator += part_size
         return key
 
     def copy_part_from_key(self, src_bucket_name, src_key_name, part_num,

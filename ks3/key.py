@@ -18,6 +18,7 @@ from ks3.compat import BytesIO
 from ks3.utils import compute_md5
 from ks3.utils import find_matching_headers, merge_meta, merge_headers_by_name
 from ks3.encryption import Crypts
+from ks3.encryptFp import EncryptFp
 
 class Key(object):
 
@@ -262,16 +263,18 @@ class Key(object):
         return False
 
     def send_file(self, fp, headers=None, cb=None, num_cb=10,
-                  query_args=None, chunked_transfer=False, size=None, crypt_context=None):
+                  query_args=None, chunked_transfer=False, size=None, 
+                  crypt_context=None, is_last_part=False):
         """
         Upload a file to a key into a bucket on S3.
         """
         return self._send_file_internal(fp, headers=headers, cb=cb, num_cb=num_cb,
                                  query_args=query_args,
-                                 chunked_transfer=chunked_transfer, size=size, crypt_context = crypt_context)
+                                 chunked_transfer=chunked_transfer, size=size, 
+                                 crypt_context = crypt_context,is_last_part=is_last_part)
     def _send_file_internal(self, fp, headers=None, cb=None, num_cb=10,
                             query_args=None, chunked_transfer=False, size=None,
-                            hash_algs=None, crypt_context=None):
+                            hash_algs=None, crypt_context=None,is_last_part=False):
         provider = self.bucket.connection.provider
         try:
             spos = fp.tell()
@@ -341,11 +344,10 @@ class Key(object):
         headers = merge_meta(headers, self.metadata, provider)
         if crypt_context:
             if self.action_info == "put":
-                fp = crypt_context.encrypt(fp.read(),crypt_context.first_iv)
+                fp = EncryptFp(fp, crypt_context.iv, crypt_context.key, "put")
             if self.action_info == "upload_part":
-                data = fp.read()
                 if not crypt_context.calc_iv:
-                    fp = crypt_context.encrypt(data,crypt_context.first_iv)
+                    fp = EncryptFp(fp, crypt_context.iv, crypt_context.key, "upload_part",isUploadFirstPart=True, isUploadLastPart=is_last_part)
                     next_iv=fp[-(crypt_context.block_size):]
                     crypt_context.set_calc_iv(next_iv)
                 else:
@@ -360,7 +362,11 @@ class Key(object):
                 query_args=query_args,
                 action_info=self.action_info,
                 crypt_context = crypt_context
-                ) 
+                )
+            if resp and resp.status > 299:
+                raise provider.storage_response_error(resp.status, resp.reason, resp.read())
+            self.handle_version_headers(resp, force=True)
+            self.handle_addl_headers(resp.getheaders())
             return resp
         resp = self.bucket.connection.make_request(
             'PUT',
@@ -381,7 +387,7 @@ class Key(object):
                                cb=None, num_cb=10, policy=None, md5=None,
                                reduced_redundancy=False, query_args=None,
                                encrypt_key=False, size=None, rewind=False,
-                               action_info="", crypt_context=None):
+                               action_info="", crypt_context=None, is_last_part=False):
         """
         Store an object in S3 using the name of the Key object as the
         key in S3 and the contents of the file pointed to by 'fp' as the
@@ -546,7 +552,8 @@ class Key(object):
 
             return self.send_file(fp, headers=headers, cb=cb, num_cb=num_cb,
                            query_args=query_args,
-                           chunked_transfer=chunked_transfer, size=size, crypt_context = crypt_context)
+                           chunked_transfer=chunked_transfer, size=size,
+                           crypt_context = crypt_context,is_last_part=is_last_part)
             # return number of bytes written.
             #return self.size
 

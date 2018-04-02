@@ -19,18 +19,35 @@ class Crypts(object):
     def set_calc_iv(self,calc_iv):
         self.calc_iv = calc_iv
 
-    def encrypt(self, content, iv):
-        pad = lambda s: s + (AES.block_size - len(s) % AES.block_size) * chr(0)
+    def upload_part_encrypt(self, content, iv):
+        """
+        For those part those size are definitly multiple of 16, use this function. If you need data padding, use the encrypt() func.
+        """
         cryptor = AES.new(self.key,AES.MODE_CBC,iv)
-        if (len(content) % 16 != 0):
-            return cryptor.encrypt(pad(content))
-        return cryptor.encrypt(content)
+        return cryptor.encrypt(content) 
+
+    def encrypt(self, content, iv):
+        cryptor = AES.new(self.key,AES.MODE_CBC,iv)
+        pad_num = self.block_size-(len(content)%(self.block_size))
+        pad_content_char = str(pad_num)
+        pad = lambda s: s + (AES.block_size - len(s) % AES.block_size) * pad_content_char
+        return cryptor.encrypt(pad(content))
 
     def decrypt(self, content, iv):
         cryptor = AES.new(self.key,AES.MODE_CBC,iv)
-        return cryptor.decrypt(content)
-        #return cryptor.decrypt(content).rstrip(chr(0))
-    
+        full_content = cryptor.decrypt(content)
+        pad_content_char1 = full_content[-1]
+        pad_content_char2 = full_content[-2]
+        if pad_content_char1 == pad_content_char2:
+            pad_content_char = pad_content_char1
+        elif pad_content_char1 == '1':
+            pad_content_char = '1'
+        else:
+            pad_content_char = pad_content_char2 + pad_content_char1
+        origin_content = full_content[:-int(pad_content_char)*len(pad_content_char)]
+        return origin_content
+
+
     def generate_key(self, length, path, file_name):
         sk = Random.new().read(length)
         f = open(path+"/"+file_name,"w")
@@ -40,12 +57,14 @@ class Crypts(object):
 if __name__ == '__main__':
 #    f=open("/data/ks3api_all_new/back/ks3-api-all-dist-2017-05-19_16-34-06.zip",'r')
     cry = Crypts("1233321112345678")
-    str = "1234567890123456"
-    str2= "sdf1234565432123"
-    print len(str)
+    str0 = ""
+    str0 = "16161616161616161616161616161616"
+    e0 = cry.encrypt(str0,cry.first_iv)
+    print "e0:"+cry.decrypt(e0,cry.first_iv)
+    str1 = "123456789012345"
+    str2 = "sdf1234565432121"
     str_all="1234567890123456sdf1234565432123"
-    e1 = cry.encrypt(str,cry.first_iv)
-    print len(e1)
+    e1 = cry.encrypt(str1,cry.first_iv)
     e2 = cry.encrypt(str2,e1)
     e3 = cry.encrypt(str_all,cry.first_iv)
 
