@@ -254,7 +254,9 @@ class MultiPartUpload(object):
                 temp_accumulator = self.size_accumulator + part_size
                 if temp_accumulator ==  self.total_size:
                     is_last_part = True
-            if not is_last_part:
+                else:
+                    is_last_part = False
+            if  is_last_part == False:
                 assert (part_size % 16 == 0), "The part size must be multiples of 16 except the last part in local encrypt mode."
         response = key.set_contents_from_file(fp, headers=headers, replace=replace,
                                    cb=cb, num_cb=num_cb, md5=md5,

@@ -15,11 +15,12 @@ class Crypts(object):
         self.first_iv = Random.new().read(AES.block_size)
         self.calc_iv = ""
         self.block_size = 16
+        self.pad_num = 0
 
     def set_calc_iv(self,calc_iv):
         self.calc_iv = calc_iv
 
-    def upload_part_encrypt(self, content, iv):
+    def encrypt_without_padding(self, content, iv):
         """
         For those part those size are definitly multiple of 16, use this function. If you need data padding, use the encrypt() func.
         """
@@ -31,21 +32,15 @@ class Crypts(object):
         pad_num = self.block_size-(len(content)%(self.block_size))
         pad_content_char = str(pad_num)
         pad = lambda s: s + (AES.block_size - len(s) % AES.block_size) * pad_content_char
-        return cryptor.encrypt(pad(content))
+        self.pad_num = pad_num*len(pad_content_char)
+        #identifier + content may still not a multiple of 16, add extra '0' after the first pad
+        pad_0 = lambda s: s + (AES.block_size - len(s)%AES.block_size) * '0'
+        return cryptor.encrypt(pad_0(pad(content)))
 
     def decrypt(self, content, iv):
         cryptor = AES.new(self.key,AES.MODE_CBC,iv)
         full_content = cryptor.decrypt(content)
-        pad_content_char1 = full_content[-1]
-        pad_content_char2 = full_content[-2]
-        if pad_content_char1 == pad_content_char2:
-            pad_content_char = pad_content_char1
-        elif pad_content_char1 == '1':
-            pad_content_char = '1'
-        else:
-            pad_content_char = pad_content_char2 + pad_content_char1
-        origin_content = full_content[:-int(pad_content_char)*len(pad_content_char)]
-        return origin_content
+        return full_content
 
 
     def generate_key(self, length, path, file_name):

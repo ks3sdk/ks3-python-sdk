@@ -4,6 +4,7 @@ import urllib
 import re
 import hashlib
 import base64
+import os
 
 from ks3.auth import canonical_string, add_auth_header, encode
 class CallingFormat:
@@ -104,10 +105,11 @@ def make_request(server, port, access_key_id, access_key_secret, method,
         if action_info == "put": 
             if final_headers["Content-MD5"]:
                 final_headers["x-kss-meta-unencrypted-content-md5"] = final_headers["Content-MD5"]
-                final_headers.pop("Content-MD5") #the object md5 has changed
+                final_headers.pop("Content-MD5")  # the object md5 has changed
             if final_headers["Content-Length"]:
                 final_headers["x-kss-meta-unencrypted-content-length"] = final_headers["Content-Length"]
-            final_headers["Content-Length"] = str(len(data))
+                final_headers["Content-Length"] = len(data)
+
             md5_generator = hashlib.md5()
             md5_generator.update(crypt_context.key)
             final_headers["x-kss-meta-key"] = base64.b64encode(md5_generator.hexdigest())
@@ -115,13 +117,13 @@ def make_request(server, port, access_key_id, access_key_secret, method,
 
         if action_info == "upload_part":
             final_headers.pop("Content-MD5")
+            final_headers["Content-Length"] = len(data)
 
         if action_info == "init_multi":
             md5_generator = hashlib.md5()
             md5_generator.update(crypt_context.key)
             final_headers["x-kss-meta-key"] = base64.b64encode(md5_generator.hexdigest())
             final_headers["x-kss-meta-iv"] = base64.b64encode(crypt_context.first_iv)
-
 
     add_auth_header(access_key_id, access_key_secret, final_headers, method,
                     bucket, key, query_args)

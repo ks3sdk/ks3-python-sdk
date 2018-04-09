@@ -344,15 +344,12 @@ class Key(object):
         headers = merge_meta(headers, self.metadata, provider)
         if crypt_context:
             if self.action_info == "put":
-                fp = EncryptFp(fp, crypt_context.iv, crypt_context.key, "put")
+                fp = EncryptFp(fp, crypt_context, "put")
             if self.action_info == "upload_part":
                 if not crypt_context.calc_iv:
-                    fp = EncryptFp(fp, crypt_context.iv, crypt_context.key, "upload_part",isUploadFirstPart=True, isUploadLastPart=is_last_part)
-                    next_iv=fp[-(crypt_context.block_size):]
-                    crypt_context.set_calc_iv(next_iv)
+                    fp = EncryptFp(fp, crypt_context, "upload_part",isUploadFirstPart=True, isUploadLastPart=is_last_part)
                 else:
-                    fp = crypt_context.encrypt(data,crypt_context.calc_iv)
-                    crypt_context.set_calc_iv(fp[-crypt_context.block_size:])
+                    fp = EncryptFp(fp, crypt_context, "upload_part",isUploadFirstPart=False, isUploadLastPart=is_last_part)
             resp = self.bucket.connection.make_request(
                 'PUT',
                 self.bucket.name,
@@ -669,20 +666,37 @@ class Key(object):
             i = 0
             cb(data_len, cb_size)
         try:
-            counter = 0
+            counter = 1
             last_iv = ""
+            total_part = math.ceil(float(self.size)/self.BufferSize)
             for bytes in self:
                 if self.bucket.connection.local_encrypt:
                     provider = self.bucket.connection.provider
-                    if counter == 0:
+                    user_key = self.bucket.connection.key
+                    crypt_handler = Crypts(user_key)
+                    if counter == 1:
+                        # For first block, drop first 16 bytes(the subjoin iv).
+                        bytes = bytes[crypt_handler.block_size:]
                         user_iv = self.user_meta[provider.metadata_prefix+"iv"]
                         user_iv = base64.b64decode(user_iv)
                     else:
                         user_iv = last_iv
-                    user_key = self.bucket.connection.key
-                    crypt_handler = Crypts(user_key)
                     last_iv = bytes[-crypt_handler.block_size:]
-                    decrypt = crypt_handler.decrypt(bytes,user_iv)
+                    if counter == total_part:
+                        # Special process of the last part with check code appending to it's end.
+                        full_content = crypt_handler.decrypt(bytes,user_iv)
+                        full_content = full_content.rstrip('0')
+                        pad_content_char1 = full_content[-1]
+                        pad_content_char2 = full_content[-2]
+                        if pad_content_char1 == pad_content_char2:
+                            pad_content_char = pad_content_char1
+                        elif pad_content_char1 == '1':
+                            pad_content_char = '1'
+                        else:
+                            pad_content_char = pad_content_char2 + pad_content_char1
+                        decrypt = full_content[:-int(pad_content_char) * len(pad_content_char)]
+                    else:
+                        decrypt = crypt_handler.decrypt(bytes,user_iv)
                     bytes = decrypt
                     counter += 1
                 fp.write(bytes)
@@ -723,10 +737,6 @@ class Key(object):
             self.resp = self.bucket.connection.make_request(
                 'GET', self.bucket.name, self.name, headers=headers,
                 query_args=query_args)
-            #print "*********************************"
-            #print '\n'.join(['%s:%s' % item for item in self.resp.__dict__.items()])
-            #print "*********************************"
-                #override_num_retries=override_num_retries)
             if self.resp.status < 199 or self.resp.status > 299:
                 body = self.resp.read()
                 raise provider.storage_response_error(self.resp.status,
