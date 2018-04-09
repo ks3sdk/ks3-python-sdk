@@ -14,7 +14,10 @@ from ks3.key import Key
 from ks3.multipart import MultiPartUpload, CompleteMultiPartUpload
 from ks3.prefix import Prefix
 from ks3.resultset import ResultSet
-from ks3.encryption import Crypts
+try:
+    from ks3.encryption import Crypts
+except:
+    pass 
 
 class Bucket(object):
 

@@ -1,7 +1,10 @@
 import os
 from ks3 import user
 from ks3 import handler
-from ks3.encryption import Crypts
+try:
+    from ks3.encryption import Crypts
+except:
+    pass
 import xml.sax
 
 
