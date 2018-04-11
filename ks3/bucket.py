@@ -491,7 +491,7 @@ class Bucket(object):
     def initiate_multipart_upload(self, key_name, headers=None,
                                   reduced_redundancy=False,
                                   metadata=None, encrypt_key=False,
-                                  policy=None):
+                                  policy=None, calc_md5=True):
         """
         Start a multipart upload operation.
             Note: After you initiate multipart upload and upload one or more
@@ -520,6 +520,7 @@ class Bucket(object):
                 self.connection.provider)
         if self.connection.local_encrypt:
             crypts = Crypts(self.connection.key)
+            crypts.calc_md5 = calc_md5
             response = self.connection.make_request('POST', self.name, key_name,
                                                 query_args=query_args,
                                                 headers=headers,action_info="init_multi",

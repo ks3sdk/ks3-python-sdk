@@ -3,6 +3,7 @@ Some handy utility functions used by several classes.
 """
 import ks3
 import six
+import io
 
 from hashlib import md5
 
@@ -89,3 +90,21 @@ def compute_hash(fp, buf_size=8192, size=None, hash_algorithm=md5):
     data_size = fp.tell() - spos
     fp.seek(spos)
     return (hex_digest, base64_digest, data_size)
+
+
+def compute_encrypted_md5(fp, buf_size=8192, hash_algorithm=md5):
+    hash_obj = hash_algorithm()
+    s = fp.read(buf_size)
+    while s:
+        if not isinstance(s, bytes):
+            s = s.encode('utf-8')
+        hash_obj.update(s)
+        s = fp.read(buf_size)
+    hex_digest = hash_obj.hexdigest()
+    base64_digest = encodebytes(hash_obj.digest()).decode('utf-8')
+    if base64_digest[-1] == '\n':
+        base64_digest = base64_digest[0:-1]
+    # data_size based on bytes read.
+    SEEK_SET = getattr(io, 'SEEK_SET', 0)
+    fp.seek(SEEK_SET)
+    return (hex_digest, base64_digest)

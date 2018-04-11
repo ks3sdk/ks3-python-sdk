@@ -100,7 +100,7 @@ class EncryptFp (object):
             if name == "seek":
                 def my_wrapper(*args, **kwargs):
                     ret = func(*args, **kwargs)
-                    self.seek_pos = args[1]
+                    # self.seek_pos = args[1]
                     return ret
             if name == "tell":
                 def my_wrapper(*args, **kwargs):

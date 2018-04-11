@@ -15,7 +15,7 @@ from ks3.exception import StorageDataError, PleaseRetryException
 from ks3.keyfile import KeyFile
 from ks3.user import User
 from ks3.compat import BytesIO
-from ks3.utils import compute_md5
+from ks3.utils import compute_md5, compute_encrypted_md5
 from ks3.utils import find_matching_headers, merge_meta, merge_headers_by_name
 try:
     from ks3.encryption import Crypts
@@ -354,6 +354,12 @@ class Key(object):
                     fp = EncryptFp(fp, crypt_context, "upload_part",isUploadFirstPart=True, isUploadLastPart=is_last_part)
                 else:
                     fp = EncryptFp(fp, crypt_context, "upload_part",isUploadFirstPart=False, isUploadLastPart=is_last_part)
+            if self.base64md5 and crypt_context.calc_md5:
+                headers['Content-MD5'] = self.compute_encrypted_md5(fp)
+                fp.block_count = 0
+                fp.calc_iv = ""
+            elif not crypt_context.calc_md5:
+                headers['Content-MD5'] = None
             resp = self.bucket.connection.make_request(
                 'PUT',
                 self.bucket.name,
@@ -388,7 +394,8 @@ class Key(object):
                                cb=None, num_cb=10, policy=None, md5=None,
                                reduced_redundancy=False, query_args=None,
                                encrypt_key=False, size=None, rewind=False,
-                               action_info="", crypt_context=None, is_last_part=False):
+                               action_info="", crypt_context=None,
+                               is_last_part=False, calc_md5=True):
         """
         Store an object in S3 using the name of the Key object as the
         key in S3 and the contents of the file pointed to by 'fp' as the
@@ -553,6 +560,7 @@ class Key(object):
             if self.bucket.connection.local_encrypt:
                 if not crypt_context:
                     crypt_context = Crypts(self.bucket.connection.key)
+                    crypt_context.calc_md5 = calc_md5
                 return self.send_file(fp, headers=headers, cb=cb, num_cb=num_cb,
                                       query_args=query_args,
                                       chunked_transfer=chunked_transfer, size=size,
@@ -566,7 +574,7 @@ class Key(object):
     def set_contents_from_filename(self, filename, headers=None, replace=True,
                                    cb=None, num_cb=10, policy=None, md5=None,
                                    reduced_redundancy=False,
-                                   encrypt_key=False):
+                                   encrypt_key=False, calc_md5=True):
         """
         Store an object in S3 using the name of the Key object as the
         key in S3 and the contents of the file named by 'filename'.
@@ -576,6 +584,7 @@ class Key(object):
         with open(filename, 'rb') as fp:
             if self.bucket.connection.local_encrypt:
                 crypts = Crypts(self.bucket.connection.key)
+                crypts.calc_md5 = calc_md5
                 return self.set_contents_from_file(fp, headers, replace, cb, 
                                                    num_cb, policy, md5, reduced_redundancy, 
                                                    encrypt_key=encrypt_key,action_info="put",
@@ -588,7 +597,7 @@ class Key(object):
     def set_contents_from_string(self, string_data, headers=None, replace=True,
                                  cb=None, num_cb=10, policy=None, md5=None,
                                  reduced_redundancy=False,
-                                 encrypt_key=False):
+                                 encrypt_key=False,calc_md5=True):
         """
         Store an object in S3 using the name of the Key object as the
         key in S3 and the string 's' as the contents.
@@ -601,6 +610,7 @@ class Key(object):
 
         if self.bucket.connection.local_encrypt:
             crypts = Crypts(self.bucket.connection.key)
+            crypts.calc_md5 = calc_md5
             return self.set_contents_from_file(fp, headers, replace, cb, 
                                                num_cb, policy, md5, reduced_redundancy, 
                                                encrypt_key=encrypt_key,action_info="put",
@@ -953,3 +963,7 @@ class Key(object):
         hex_digest, b64_digest, data_size = compute_md5(fp, size=size)
         self.size = data_size
         return (hex_digest, b64_digest)
+
+    def compute_encrypted_md5(self, fp):
+        hex_digest, b64_digest = compute_encrypted_md5(fp)
+        return b64_digest

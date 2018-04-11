@@ -19,6 +19,7 @@ class Crypts(object):
         self.part_num = 0
         self.iv_dict = {}
         self.pad_dict = self.init_pad_dict()
+        self.calc_md5 = True
 
     def init_pad_dict(self):
         temp_dict={}

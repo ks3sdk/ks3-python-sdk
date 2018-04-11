@@ -103,9 +103,8 @@ def make_request(server, port, access_key_id, access_key_secret, method,
 
     if crypt_context:
         if action_info == "put": 
-            if final_headers.get("Content-MD5"):
-                final_headers["x-kss-meta-unencrypted-content-md5"] = final_headers["Content-MD5"]
-                final_headers.pop("Content-MD5")  # the object md5 has changed
+            if not final_headers.get("Content-MD5"):
+                final_headers.pop("Content-MD5")  # header[md5] == None means user set md5-check closed.
             if final_headers.get("Content-Length"):
                 final_headers["x-kss-meta-unencrypted-content-length"] = final_headers["Content-Length"]
             final_headers["Content-Length"] = len(data)
@@ -116,7 +115,8 @@ def make_request(server, port, access_key_id, access_key_secret, method,
             final_headers["x-kss-meta-iv"] = base64.b64encode(crypt_context.first_iv)
 
         if action_info == "upload_part":
-            final_headers.pop("Content-MD5")
+            if not final_headers.get("Content-MD5"):
+                final_headers.pop("Content-MD5")
             final_headers["Content-Length"] = len(data)
 
         if action_info == "init_multi":
