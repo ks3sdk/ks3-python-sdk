@@ -103,12 +103,12 @@ def make_request(server, port, access_key_id, access_key_secret, method,
 
     if crypt_context:
         if action_info == "put": 
-            if final_headers["Content-MD5"]:
+            if final_headers.get("Content-MD5"):
                 final_headers["x-kss-meta-unencrypted-content-md5"] = final_headers["Content-MD5"]
                 final_headers.pop("Content-MD5")  # the object md5 has changed
-            if final_headers["Content-Length"]:
+            if final_headers.get("Content-Length"):
                 final_headers["x-kss-meta-unencrypted-content-length"] = final_headers["Content-Length"]
-                final_headers["Content-Length"] = len(data)
+            final_headers["Content-Length"] = len(data)
 
             md5_generator = hashlib.md5()
             md5_generator.update(crypt_context.key)

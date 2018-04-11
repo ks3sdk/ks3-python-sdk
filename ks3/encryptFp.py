@@ -39,6 +39,7 @@ class EncryptFp (object):
                     self.block_count += 1
                     if len(data) == 0:
                         return None
+                    # print len(data)
                     if self.type == "put":              
                         if self.block_count == 1:
                             if self.block_total_count == 1:
@@ -78,22 +79,23 @@ class EncryptFp (object):
                         elif self.isUploadLastPart == False:
                             # The normal part that is neither the first nor the last one.
                             if self.block_count == 1:
-                                self.calc_iv = self.crypt_context.calc_iv
+                                self.calc_iv = self.crypt_context.iv_dict[self.crypt_context.part_num-1]
                             encrypt_data = self.crypt_handler.encrypt_without_padding(data, self.calc_iv)
                         else:
                             # The last part.
                             # The last part's parts use 'encrypt' instead of 'encrypt_without_padding'
                             # because the last part's last part need paddling.
                             if self.block_count == 1 and self.block_count != self.block_total_count:
-                                encrypt_data = self.crypt_handler.encrypt_without_padding(data, self.crypt_context.calc_iv)
+                                encrypt_data = self.crypt_handler.encrypt_without_padding(data, self.crypt_context.iv_dict[self.crypt_context.part_num-1])
                             elif self.block_count == 1 and self.block_count == self.block_total_count:
-                                encrypt_data = self.crypt_handler.encrypt(data, self.crypt_context.calc_iv)
+                                encrypt_data = self.crypt_handler.encrypt(data, self.crypt_context.iv_dict[self.crypt_context.part_num-1])
                             elif self.block_count == self.block_total_count:
                                 encrypt_data = self.crypt_handler.encrypt(data, self.calc_iv)
                             else:
                                 encrypt_data = self.crypt_handler.encrypt_without_padding(data,self.calc_iv)
                         self.calc_iv = encrypt_data[-self.block_size:]
-                        self.crypt_context.calc_iv = self.calc_iv
+                        self.crypt_context.iv_dict[self.crypt_context.part_num] = self.calc_iv
+                        # print len(encrypt_data), self.block_count, self.block_total_count
                     return encrypt_data
             if name == "seek":
                 def my_wrapper(*args, **kwargs):
@@ -121,12 +123,6 @@ class EncryptFp (object):
         blocksize = 16
         if self.type == "put" or (self.type=="upload_part" and self.isUploadLastPart==True):
             pad = blocksize - length % blocksize
-            if pad > 9:
-                pad = pad*2
-            if pad == 0:
-                pad = blocksize*2
-            # In cases, we need extra '0' pads to complete 16.
-            extra_pad = blocksize - (length+pad) % blocksize
-            return length+pad+extra_pad
+            return length+pad
         else:
             return length

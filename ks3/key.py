@@ -272,12 +272,13 @@ class Key(object):
         Upload a file to a key into a bucket on S3.
         """
         return self._send_file_internal(fp, headers=headers, cb=cb, num_cb=num_cb,
-                                 query_args=query_args,
-                                 chunked_transfer=chunked_transfer, size=size, 
-                                 crypt_context = crypt_context,is_last_part=is_last_part)
+                                        query_args=query_args, chunked_transfer=chunked_transfer,
+                                        size=size, crypt_context=crypt_context,
+                                        is_last_part=is_last_part)
     def _send_file_internal(self, fp, headers=None, cb=None, num_cb=10,
                             query_args=None, chunked_transfer=False, size=None,
-                            hash_algs=None, crypt_context=None,is_last_part=False):
+                            hash_algs=None, crypt_context=None,is_last_part=False,
+                            part_num=0):
         provider = self.bucket.connection.provider
         try:
             spos = fp.tell()
@@ -349,7 +350,7 @@ class Key(object):
             if self.action_info == "put":
                 fp = EncryptFp(fp, crypt_context, "put")
             if self.action_info == "upload_part":
-                if not crypt_context.calc_iv:
+                if crypt_context.part_num == 1:
                     fp = EncryptFp(fp, crypt_context, "upload_part",isUploadFirstPart=True, isUploadLastPart=is_last_part)
                 else:
                     fp = EncryptFp(fp, crypt_context, "upload_part",isUploadFirstPart=False, isUploadLastPart=is_last_part)
@@ -549,11 +550,16 @@ class Key(object):
                 if self.bucket.lookup(self.name):
                     return
             self.action_info = action_info
-
+            if self.bucket.connection.local_encrypt:
+                if not crypt_context:
+                    crypt_context = Crypts(self.bucket.connection.key)
+                return self.send_file(fp, headers=headers, cb=cb, num_cb=num_cb,
+                                      query_args=query_args,
+                                      chunked_transfer=chunked_transfer, size=size,
+                                      crypt_context=crypt_context, is_last_part=is_last_part)
             return self.send_file(fp, headers=headers, cb=cb, num_cb=num_cb,
                            query_args=query_args,
-                           chunked_transfer=chunked_transfer, size=size,
-                           crypt_context = crypt_context,is_last_part=is_last_part)
+                           chunked_transfer=chunked_transfer, size=size)
             # return number of bytes written.
             #return self.size
 
@@ -577,7 +583,7 @@ class Key(object):
             return self.set_contents_from_file(fp, headers, replace, cb,
                                                num_cb, policy, md5,
                                                reduced_redundancy,
-                                               encrypt_key=encrypt_key,action_info="put")
+                                               encrypt_key=encrypt_key)
 
     def set_contents_from_string(self, string_data, headers=None, replace=True,
                                  cb=None, num_cb=10, policy=None, md5=None,
@@ -601,7 +607,7 @@ class Key(object):
                                                crypt_context = crypts)
         r = self.set_contents_from_file(fp, headers, replace, cb, num_cb,
                                         policy, md5, reduced_redundancy,
-                                        encrypt_key=encrypt_key, action_info="put")
+                                        encrypt_key=encrypt_key)
         fp.close()
         return r
 
@@ -688,18 +694,13 @@ class Key(object):
                     if counter == total_part:
                         # Special process of the last part with check code appending to it's end.
                         full_content = crypt_handler.decrypt(bytes,user_iv)
-                        full_content = full_content.rstrip('0')
-                        pad_content_char1 = full_content[-1]
-                        pad_content_char2 = full_content[-2]
-                        if pad_content_char1 == pad_content_char2:
-                            pad_content_char = pad_content_char1
-                        elif pad_content_char1 == '1':
-                            pad_content_char = '1'
-                        else:
-                            pad_content_char = pad_content_char2 + pad_content_char1
-                        decrypt = full_content[:-int(pad_content_char) * len(pad_content_char)]
+                        pad_content_char = full_content[-1]
+                        for key in crypt_handler.pad_dict:
+                            if crypt_handler.pad_dict[key] == pad_content_char:
+                                pad_content_char = key
+                        decrypt = full_content[:-int(pad_content_char)]
                     else:
-                        decrypt = crypt_handler.decrypt(bytes,user_iv)
+                        decrypt = crypt_handler.decrypt(bytes, user_iv)
                     bytes = decrypt
                     counter += 1
                 fp.write(bytes)

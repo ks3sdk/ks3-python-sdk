@@ -520,10 +520,14 @@ class Bucket(object):
                 self.connection.provider)
         if self.connection.local_encrypt:
             crypts = Crypts(self.connection.key)
-        response = self.connection.make_request('POST', self.name, key_name,
+            response = self.connection.make_request('POST', self.name, key_name,
                                                 query_args=query_args,
                                                 headers=headers,action_info="init_multi",
                                                 crypt_context = crypts)
+        else:
+            response = self.connection.make_request('POST', self.name, key_name,
+                                                    query_args=query_args,
+                                                    headers=headers)
         body = response.read()
         if response.status == 200:
             resp = MultiPartUpload(self)

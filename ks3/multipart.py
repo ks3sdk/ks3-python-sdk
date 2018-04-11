@@ -125,8 +125,10 @@ class MultiPartUpload(object):
         self.is_truncated = False
         self._parts = None
         self.crypt_context = None
-        self.size_accumulator = 0
+        # self.size_accumulator = 0
+        self.size_accumulator = {}
         self.total_size = 0
+
 
     def __repr__(self):
         return '<MultiPartUpload %s>' % self.key_name
@@ -248,28 +250,37 @@ class MultiPartUpload(object):
             fp.seek(0,os.SEEK_END)
             part_size = fp.tell()
             fp.seek(0,os.SEEK_SET)
-            if not self.total_size:
-                self.total_size = os.fstat(fp.fileno()).st_size
+            self.total_size = os.fstat(fp.fileno()).st_size
             if part_size == self.total_size:
                 assert is_last_part != "origin", "Please indicate 'is_last_part=False/True' \
                                                   when calling upload_part_from_file."
             else:
-                temp_accumulator = self.size_accumulator + part_size
-                if temp_accumulator ==  self.total_size:
+                size_now = self.add_all_part(part_num)
+                temp_accumulator = size_now + part_size
+                if temp_accumulator == self.total_size:
                     is_last_part = True
                 else:
                     is_last_part = False
             if  is_last_part == False:
                 assert (part_size % 16 == 0), "The part size must be multiples of 16 except the last part in local encrypt mode."
-        response = key.set_contents_from_file(fp, headers=headers, replace=replace,
-                                   cb=cb, num_cb=num_cb, md5=md5,
-                                   reduced_redundancy=False,
-                                   query_args=query_args, size=size, action_info="upload_part",
-                                   crypt_context=self.crypt_context,is_last_part=is_last_part)
-        # key.set_contents_from_file() raise an exception when fail.
-        self.size_accumulator += part_size
+            self.crypt_context.part_num = part_num
+            response = key.set_contents_from_file(fp, headers=headers, replace=replace,
+                                                  cb=cb, num_cb=num_cb, md5=md5,reduced_redundancy=False,
+                                                  query_args=query_args, size=size, action_info="upload_part",
+                                                  crypt_context=self.crypt_context,is_last_part=is_last_part)
+            # key.set_contents_from_file() raise an exception when fail.
+            self.size_accumulator[part_num] = part_size
+        else:
+            key.set_contents_from_file(fp, headers=headers, replace=replace,
+                                       cb=cb, num_cb=num_cb, md5=md5,
+                                       reduced_redundancy=False,
+                                       query_args=query_args, size=size)
         return key
-
+    def add_all_part(self, part_num):
+        sum = 0
+        for i in range(1,len(self.size_accumulator)+1):
+            sum += self.size_accumulator[i]
+        return sum
     def copy_part_from_key(self, src_bucket_name, src_key_name, part_num,
                            start=None, end=None, src_version_id=None,
                            headers=None):
