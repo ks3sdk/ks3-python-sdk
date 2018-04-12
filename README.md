@@ -290,6 +290,7 @@
 使用加密客户端需要安装pycrypto。
 1. 可选择使用pip install pycrypto进行安装
 2. 无法直接连接pypi服务的话，可选择下载[pycrypto安装包](https://pypi.python.org/pypi/pycrypto/2.6.1/)手动进行安装
+
 ### 配置密钥
 您可以使用自己的密钥文件，或者选择调用我们的密钥生成方法。
 1. 如果使用自己的密钥文件：请确保文件中密钥长度为16字节，如果不是16字节，程序将报错
@@ -339,8 +340,8 @@ Crypts.generate_key('your_path', 'key_name')
 
 
 #### 注意事项
-1. 对于使用加密模式上传的数据，请使用加密模式下（local_encrypt=True）的get方法进行下载。未设置加密模式的get下载下来的这份数据是加密的，无法解读。
-2. 加密上传默认进行MD5验证，以防止网络传输过程中的数据损坏。在文件较大的情况下，对加密后文件的MD5计算较为耗时（每500MB约耗时10s），如果不能接受这种额外耗时，可以在调用方法时设置calc_md5=False来关闭MD5校验功能。当然，我们不推荐您关闭MD5校验。
+* 对于使用加密模式上传的数据，请使用加密模式下（local_encrypt=True）的get方法进行下载。未设置加密模式的get下载下来的这份数据是加密的，无法解读。
+* 加密上传默认进行MD5验证，以防止网络传输过程中的数据损坏。在文件较大的情况下，对加密后文件的MD5计算较为耗时（每500MB约耗时10s），如果不能接受这种额外耗时，可以在调用方法时设置calc_md5=False来关闭MD5校验功能。当然，我们不推荐您关闭MD5校验。
 
 ```
 #PUT时取消MD5 CHECK：
@@ -349,8 +350,7 @@ ret = kw.set_contents_from_filename(test_path, calc_md5=False)
 #分块时取消MD5 CHECK：
 mp = b.initiate_multipart_upload(os.path.basename(path), calc_md5=False)
 ```
-
-3. 用户key的MD5值将作为自定义header放入元数据，方便您后续可能的验证操作。对key的MD5计算方法如下：
+* 用户key的MD5值将作为自定义header放入元数据，方便您后续可能的验证操作。对key的MD5计算方法如下：
 
 ```
 import hashlib
@@ -359,5 +359,5 @@ md5_generator = hashlib.md5()
 md5_generator.update("your_key")
 base64.b64encode(md5_generator.hexdigest())
 ```
-4. 如果需要在分块上传相关代码中加入重试逻辑，请将开始重试的part_num后的所有块都进行重试。比如上传8块，从第5块开始重试，则需要重新上传的块为5、6、7、8。
-5. 对于空文件/空字符串的put请求，即使设置了加密模式也不会加密。
+* 如果需要在分块上传相关代码中加入重试逻辑，请将开始重试的part_num后的所有块都进行重试。比如上传8块，从第5块开始重试，则需要重新上传的块为5、6、7、8。
+* 对于空文件/空字符串的put请求，即使设置了加密模式也不会加密。
