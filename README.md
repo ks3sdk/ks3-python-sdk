@@ -281,3 +281,83 @@
 指定时间过期
 	
 	k.generate_url(1492073594,expires_in_absolute=True) # 1492073594为Unix Time
+
+<br />
+
+## 客户端文件加密
+如果您有上传前先加密数据的需求，可以考虑使用加密模式。
+### 环境要求
+使用加密客户端需要安装pycrypto。
+1. 可选择使用pip install pycrypto进行安装
+2. 无法直接连接pypi服务的话，可选择下载[pycrypto安装包](https://pypi.python.org/pypi/pycrypto/2.6.1/)手动进行安装
+### 配置密钥
+您可以使用自己的密钥文件，或者选择调用我们的密钥生成方法。
+1. 如果使用自己的密钥文件：请确保文件中密钥长度为16字节，如果不是16字节，程序将报错
+2. 如果调用密钥生成方法：
+
+```
+from ks3.encryption import Crypts
+Crypts.generate_key('your_path', 'key_name')
+```
+*请注意保管好您的key文件，KS3服务端将不会对客户端加密时使用的key文件进行保存，一旦丢失，文件将无法被解密。*
+
+### 用法示例
+#### PUT、GET
+对put、get方法加密客户端和普通客户端用法基本一致，不同之处在于初始化Connection对象时需要多填两个参数。
+
+    c = Connection(ak, sk, host,is_secure=False, domain_mode=False, local_encrypt=True, local_key_path="your_key_path")
+    b = c.get_bucket("your_bucket")
+    #put
+    kw = b.new_key("your_key")
+    ret = kw.set_contents_from_string("some string")
+    #get
+    get_key = b.get_key("your_key")
+    s = get_key.get_contents_as_string()
+    print "Result:" + s
+
+#### 分块上传
+*加密客户端的分块上传不支持对文件的并行上传！分块上传时必须依次序上传每一块，否则数据将无法解密。*<br />
+示例1：使用FileChunkIO进行分块上传。与普通客户端的方法基本一致，和put一样只需在初始化时增加参数。
+
+    c = Connection(ak, sk, host,is_secure=False, domain_mode=False, local_encrypt=True, local_key_path="your_key_path")
+    #继续普通分块上传方法
+
+示例2：自己切分文件进行分块上传。除了修改Connection的参数之外，还需在调用upload_part_from_file方法时指定is_last_part的值。
+
+    c = Connection(ak, sk, host,is_secure=False, domain_mode=False, local_encrypt=True, local_key_path="your_key_path")
+    b = c.get_bucket("your_bucket")
+    mp = b.initiate_multipart_upload("your_file")
+    fp = open('part1','rb')
+    mp.upload_part_from_file(fp,part_num=1,is_last_part=False)
+    fp.close()
+    fp = open('part2','rb')
+    mp.upload_part_from_file(fp,part_num=2,is_last_part=True)
+    fp.close()
+    result = mp.complete_upload()
+
+
+
+
+#### 注意事项
+1. 对于使用加密模式上传的数据，请使用加密模式下（local_encrypt=True）的get方法进行下载。未设置加密模式的get下载下来的这份数据是加密的，无法解读。
+2. 加密上传默认进行MD5验证，以防止网络传输过程中的数据损坏。在文件较大的情况下，对加密后文件的MD5计算较为耗时（每500MB约耗时10s），如果不能接受这种额外耗时，可以在调用方法时设置calc_md5=False来关闭MD5校验功能。当然，我们不推荐您关闭MD5校验。
+
+```
+#PUT时取消MD5 CHECK：
+ret = kw.set_contents_from_string(test_str, calc_md5=False)
+ret = kw.set_contents_from_filename(test_path, calc_md5=False)
+#分块时取消MD5 CHECK：
+mp = b.initiate_multipart_upload(os.path.basename(path), calc_md5=False)
+```
+
+3. 用户key的MD5值将作为自定义header放入元数据，方便您后续可能的验证操作。对key的MD5计算方法如下：
+
+```
+import hashlib
+import base64
+md5_generator = hashlib.md5()
+md5_generator.update("your_key")
+base64.b64encode(md5_generator.hexdigest())
+```
+4. 如果需要在分块上传相关代码中加入重试逻辑，请将开始重试的part_num后的所有块都进行重试。比如上传8块，从第5块开始重试，则需要重新上传的块为5、6、7、8。
+5. 对于空文件/空字符串的put请求，即使设置了加密模式也不会加密。

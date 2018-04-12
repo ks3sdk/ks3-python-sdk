@@ -557,7 +557,7 @@ class Key(object):
                 if self.bucket.lookup(self.name):
                     return
             self.action_info = action_info
-            if self.bucket.connection.local_encrypt:
+            if self.bucket.connection.local_encrypt and self.size:
                 if not crypt_context:
                     crypt_context = Crypts(self.bucket.connection.key)
                     crypt_context.calc_md5 = calc_md5
@@ -608,7 +608,7 @@ class Key(object):
             string_data = string_data.encode("utf-8")
         fp = BytesIO(string_data)
 
-        if self.bucket.connection.local_encrypt:
+        if self.bucket.connection.local_encrypt and len(string_data):
             crypts = Crypts(self.bucket.connection.key)
             crypts.calc_md5 = calc_md5
             return self.set_contents_from_file(fp, headers, replace, cb, 

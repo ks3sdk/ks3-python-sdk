@@ -54,16 +54,17 @@ class Crypts(object):
         full_content = cryptor.decrypt(content)
         return full_content
 
-
-    def generate_key(self, length, path, file_name):
-        sk = Random.new().read(length)
+    @staticmethod
+    def generate_key(path, file_name):
+        sk = Random.new().read(16)
         f = open(path+"/"+file_name,"w")
         f.write(sk)
         f.close()
     
 if __name__ == '__main__':
-    cry = Crypts("1233321112345678")
-    # str0 = ""
+    # cry = Crypts.generate_key('./', 'try_key')
+    cry = Crypts("1234567890123456")
+    str0 = ""
     # str0 = "16161616161616161616161616161616"
     # e0 = cry.encrypt(str0,cry.first_iv)
     # print "e0:"+cry.decrypt(e0,cry.first_iv)

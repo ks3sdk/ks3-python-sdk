@@ -157,7 +157,7 @@ class Connection(object):
             assert os.path.getsize(path), "The key file should not be empty"
             content = ak_file.read()
             assert len(content.strip()) == 16,"The key's length should be 16"
-            self.key = content
+            self.key = content.strip()
         
 
     def make_request(self, method, bucket="", key="", data="",
