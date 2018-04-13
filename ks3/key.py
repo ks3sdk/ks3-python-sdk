@@ -1,5 +1,6 @@
 import base64
 import email
+import hashlib
 import math
 import mimetypes
 import os
@@ -77,8 +78,8 @@ class Key(object):
         self.encrypted = None
         #
         self.local_hashes = {}
-        self.action_info=""
         self.user_meta = {}
+        self.calc_encrypt_md5 = True
 
     def __repr__(self):
         if self.bucket:
@@ -176,6 +177,14 @@ class Key(object):
         return self.bucket.delete_key(self.name, version_id=self.version_id,
                                       headers=headers)
 
+    def enable_calc_encrypt_md5(self, val):
+        """
+        enable/disable auto calc file md5 for local encryption upload mod
+        :param val: True or False
+        :return:
+        """
+        self.calc_encrypt_md5 = val
+
     def generate_url(self, expires_in, method='GET', headers=None,
                      query_auth=True, force_http=False, response_headers=None,
                      expires_in_absolute=False, version_id=None,
@@ -267,18 +276,16 @@ class Key(object):
 
     def send_file(self, fp, headers=None, cb=None, num_cb=10,
                   query_args=None, chunked_transfer=False, size=None, 
-                  crypt_context=None, is_last_part=False):
+                  crypt_context=None):
         """
         Upload a file to a key into a bucket on S3.
         """
         return self._send_file_internal(fp, headers=headers, cb=cb, num_cb=num_cb,
                                         query_args=query_args, chunked_transfer=chunked_transfer,
-                                        size=size, crypt_context=crypt_context,
-                                        is_last_part=is_last_part)
+                                        size=size, crypt_context=crypt_context)
     def _send_file_internal(self, fp, headers=None, cb=None, num_cb=10,
                             query_args=None, chunked_transfer=False, size=None,
-                            hash_algs=None, crypt_context=None,is_last_part=False,
-                            part_num=0):
+                            hash_algs=None, crypt_context=None):
         provider = self.bucket.connection.provider
         try:
             spos = fp.tell()
@@ -346,29 +353,39 @@ class Key(object):
         #    headers['_sha256'] = compute_hash(**kwargs)[0]
         headers['Expect'] = '100-Continue'
         headers = merge_meta(headers, self.metadata, provider)
-        if crypt_context:
-            if self.action_info == "put":
+        if self.bucket.connection.local_encrypt and crypt_context:
+            if crypt_context.action_info == "put":
                 fp = EncryptFp(fp, crypt_context, "put")
-            if self.action_info == "upload_part":
+                md5_generator = hashlib.md5()
+                md5_generator.update(crypt_context.key)
+                headers["x-kss-meta-key"] = base64.b64encode(md5_generator.hexdigest())
+                headers["x-kss-meta-iv"] = base64.b64encode(crypt_context.first_iv)
+            if crypt_context.action_info == "upload_part":
                 if crypt_context.part_num == 1:
-                    fp = EncryptFp(fp, crypt_context, "upload_part",isUploadFirstPart=True, isUploadLastPart=is_last_part)
+                    fp = EncryptFp(fp, crypt_context, "upload_part",isUploadFirstPart=True, isUploadLastPart=crypt_context.is_last_part)
                 else:
-                    fp = EncryptFp(fp, crypt_context, "upload_part",isUploadFirstPart=False, isUploadLastPart=is_last_part)
-            if self.base64md5 and crypt_context.calc_md5:
+                    fp = EncryptFp(fp, crypt_context, "upload_part",isUploadFirstPart=False, isUploadLastPart=crypt_context.is_last_part)
+            if self.base64md5:
+                headers["x-kss-meta-unencrypted-content-md5"]=self.base64md5
+            if headers.get("Content-MD5"):
+                headers.pop("Content-MD5")
+            if crypt_context.calc_md5:
                 headers['Content-MD5'] = self.compute_encrypted_md5(fp)
                 fp.block_count = 0
                 fp.calc_iv = ""
-            elif not crypt_context.calc_md5:
-                headers['Content-MD5'] = None
+            if chunked_transfer:
+                headers['Transfer-Encoding'] = 'chunked'
+            else:
+                headers['Content-Length'] = str(len(fp))
+            headers["x-kss-meta-unencrypted-content-length"] = str(self.size)
+
             resp = self.bucket.connection.make_request(
                 'PUT',
                 self.bucket.name,
                 self.name,
                 data=fp,
                 headers=headers,
-                query_args=query_args,
-                action_info=self.action_info,
-                crypt_context = crypt_context
+                query_args=query_args
                 )
             if resp and resp.status > 299:
                 raise provider.storage_response_error(resp.status, resp.reason, resp.read())
@@ -381,8 +398,7 @@ class Key(object):
             self.name,
             data=fp,
             headers=headers,
-            query_args=query_args,
-            action_info=self.action_info,
+            query_args=query_args
         )
         if resp and resp.status > 299:
             raise provider.storage_response_error(resp.status, resp.reason, resp.read())
@@ -394,8 +410,7 @@ class Key(object):
                                cb=None, num_cb=10, policy=None, md5=None,
                                reduced_redundancy=False, query_args=None,
                                encrypt_key=False, size=None, rewind=False,
-                               action_info="", crypt_context=None,
-                               is_last_part=False, calc_md5=True):
+                               crypt_context=None, calc_encrypt_md5=True):
         """
         Store an object in S3 using the name of the Key object as the
         key in S3 and the contents of the file pointed to by 'fp' as the
@@ -556,15 +571,15 @@ class Key(object):
             if not replace:
                 if self.bucket.lookup(self.name):
                     return
-            self.action_info = action_info
             if self.bucket.connection.local_encrypt:
                 if not crypt_context:
                     crypt_context = Crypts(self.bucket.connection.key)
-                    crypt_context.calc_md5 = calc_md5
+                    crypt_context.action_info = "put"
+                    crypt_context.calc_md5 = calc_encrypt_md5
                 return self.send_file(fp, headers=headers, cb=cb, num_cb=num_cb,
                                       query_args=query_args,
                                       chunked_transfer=chunked_transfer, size=size,
-                                      crypt_context=crypt_context, is_last_part=is_last_part)
+                                      crypt_context=crypt_context)
             return self.send_file(fp, headers=headers, cb=cb, num_cb=num_cb,
                            query_args=query_args,
                            chunked_transfer=chunked_transfer, size=size)
@@ -574,7 +589,7 @@ class Key(object):
     def set_contents_from_filename(self, filename, headers=None, replace=True,
                                    cb=None, num_cb=10, policy=None, md5=None,
                                    reduced_redundancy=False,
-                                   encrypt_key=False, calc_md5=True):
+                                   encrypt_key=False, calc_encrypt_md5=True):
         """
         Store an object in S3 using the name of the Key object as the
         key in S3 and the contents of the file named by 'filename'.
@@ -582,13 +597,6 @@ class Key(object):
         parameters.
         """
         with open(filename, 'rb') as fp:
-            if self.bucket.connection.local_encrypt:
-                crypts = Crypts(self.bucket.connection.key)
-                crypts.calc_md5 = calc_md5
-                return self.set_contents_from_file(fp, headers, replace, cb, 
-                                                   num_cb, policy, md5, reduced_redundancy, 
-                                                   encrypt_key=encrypt_key,action_info="put",
-                                                   crypt_context = crypts)
             return self.set_contents_from_file(fp, headers, replace, cb,
                                                num_cb, policy, md5,
                                                reduced_redundancy,
@@ -597,7 +605,7 @@ class Key(object):
     def set_contents_from_string(self, string_data, headers=None, replace=True,
                                  cb=None, num_cb=10, policy=None, md5=None,
                                  reduced_redundancy=False,
-                                 encrypt_key=False,calc_md5=True):
+                                 encrypt_key=False, calc_encrypt_md5=True):
         """
         Store an object in S3 using the name of the Key object as the
         key in S3 and the string 's' as the contents.
@@ -607,14 +615,6 @@ class Key(object):
         if not isinstance(string_data, bytes):
             string_data = string_data.encode("utf-8")
         fp = BytesIO(string_data)
-
-        if self.bucket.connection.local_encrypt:
-            crypts = Crypts(self.bucket.connection.key)
-            crypts.calc_md5 = calc_md5
-            return self.set_contents_from_file(fp, headers, replace, cb, 
-                                               num_cb, policy, md5, reduced_redundancy, 
-                                               encrypt_key=encrypt_key,action_info="put",
-                                               crypt_context = crypts)
         r = self.set_contents_from_file(fp, headers, replace, cb, num_cb,
                                         policy, md5, reduced_redundancy,
                                         encrypt_key=encrypt_key)
@@ -695,9 +695,13 @@ class Key(object):
                     crypt_handler = Crypts(user_key)
                     if counter == 1:
                         # For first block, drop first 16 bytes(the subjoin iv).
+                        local_iv = bytes[:crypt_handler.block_size]
                         bytes = bytes[crypt_handler.block_size:]
-                        user_iv = self.user_meta[provider.metadata_prefix+"iv"]
-                        user_iv = base64.b64decode(user_iv)
+                        server_iv = self.user_meta[provider.metadata_prefix+"iv"]
+                        server_iv = base64.b64decode(server_iv)
+                        if server_iv and local_iv != server_iv:
+                            raise ValueError("decryption error:file.iv not equel server.iv")
+                        user_iv=local_iv
                     else:
                         user_iv = last_iv
                     last_iv = bytes[-crypt_handler.block_size:]
@@ -732,8 +736,7 @@ class Key(object):
         if cb and (cb_count <= 1 or i > 0) and data_len > 0:
             cb(data_len, cb_size)
         for alg in digesters:
-            self.local_hashes[alg] = digesters[alg].digest()
-            
+          self.local_hashes[alg] = digesters[alg].digest()
         if self.size is None and not torrent and "Range" not in headers:
             self.size = data_len
         self.close()

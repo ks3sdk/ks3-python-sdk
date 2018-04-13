@@ -245,7 +245,7 @@ class MultiPartUpload(object):
             raise ValueError('Part numbers must be greater than zero')
         query_args = 'partNumber=%d&uploadId=%s' % (part_num, self.id)
         key = self.bucket.new_key(self.key_name)
-        if self.bucket.connection.local_encrypt:
+        if self.bucket.connection.local_encrypt and self.crypt_context:
             #Get sizes of the whole file and the part
             fp.seek(0,os.SEEK_END)
             part_size = fp.tell()
@@ -261,13 +261,14 @@ class MultiPartUpload(object):
                     is_last_part = True
                 else:
                     is_last_part = False
-            if  is_last_part == False:
+            if not is_last_part:
                 assert (part_size % 16 == 0), "The part size must be multiples of 16 except the last part in local encrypt mode."
             self.crypt_context.part_num = part_num
+            self.crypt_context.is_last_part = is_last_part
+            self.crypt_context.action_info = "upload_part"
             response = key.set_contents_from_file(fp, headers=headers, replace=replace,
                                                   cb=cb, num_cb=num_cb, md5=md5,reduced_redundancy=False,
-                                                  query_args=query_args, size=size, action_info="upload_part",
-                                                  crypt_context=self.crypt_context,is_last_part=is_last_part)
+                                                  query_args=query_args, size=size, crypt_context=self.crypt_context)
             # key.set_contents_from_file() raise an exception when fail.
             self.size_accumulator[part_num] = part_size
         else:
@@ -278,8 +279,9 @@ class MultiPartUpload(object):
         return key
     def add_all_part(self, part_num):
         sum = 0
-        for i in range(1,len(self.size_accumulator)+1):
-            sum += self.size_accumulator[i]
+        for i in range(1,part_num+1):
+            if self.size_accumulator.get(i):
+                sum += self.size_accumulator[i]
         return sum
     def copy_part_from_key(self, src_bucket_name, src_key_name, part_num,
                            start=None, end=None, src_version_id=None,
@@ -337,7 +339,7 @@ class MultiPartUpload(object):
         """
         xml = self.to_xml()
         return self.bucket.complete_multipart_upload(self.key_name,
-                                                     self.id, xml, crypt_context=self.crypt_context)
+                                                     self.id, xml)
 
     def cancel_upload(self):
         """

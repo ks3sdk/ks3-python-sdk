@@ -1,12 +1,11 @@
+
 import httplib
 import time
 import urllib
 import re
-import hashlib
-import base64
-import os
 
 from ks3.auth import canonical_string, add_auth_header, encode
+
 class CallingFormat:
     PATH = 1
     SUBDOMAIN = 2
@@ -49,7 +48,7 @@ def get_object_url(age, bucket="", key="", secret_access_key="", access_key_id="
 
 def make_request(server, port, access_key_id, access_key_secret, method, 
                  bucket="", key="", query_args=None, headers=None, data="", 
-                 metadata=None, call_fmt=CallingFormat.PATH, is_secure=False,domain_mode=False, action_info="",crypt_context=None):
+                 metadata=None, call_fmt=CallingFormat.PATH, is_secure=False,domain_mode=False):
     if not headers:
         headers = {}
     #if not query_args:
@@ -101,32 +100,9 @@ def make_request(server, port, access_key_id, access_key_secret, method,
     if method.upper() == "POST" and "Content-Length" not in final_headers and not data:
         final_headers["Content-Length"] = str(len(data))
 
-    if crypt_context:
-        if action_info == "put": 
-            if not final_headers.get("Content-MD5"):
-                final_headers.pop("Content-MD5")  # header[md5] == None means user set md5-check closed.
-            if final_headers.get("Content-Length"):
-                final_headers["x-kss-meta-unencrypted-content-length"] = final_headers["Content-Length"]
-            final_headers["Content-Length"] = len(data)
-
-            md5_generator = hashlib.md5()
-            md5_generator.update(crypt_context.key)
-            final_headers["x-kss-meta-key"] = base64.b64encode(md5_generator.hexdigest())
-            final_headers["x-kss-meta-iv"] = base64.b64encode(crypt_context.first_iv)
-
-        if action_info == "upload_part":
-            if not final_headers.get("Content-MD5"):
-                final_headers.pop("Content-MD5")
-            final_headers["Content-Length"] = len(data)
-
-        if action_info == "init_multi":
-            md5_generator = hashlib.md5()
-            md5_generator.update(crypt_context.key)
-            final_headers["x-kss-meta-key"] = base64.b64encode(md5_generator.hexdigest())
-            final_headers["x-kss-meta-iv"] = base64.b64encode(crypt_context.first_iv)
-
     add_auth_header(access_key_id, access_key_secret, final_headers, method,
                     bucket, key, query_args)
+
     connection.request(method, path, data, final_headers)
     resp = connection.getresponse()
     if resp.status >= 300 and resp.status < 400 and 'location' == query_args:

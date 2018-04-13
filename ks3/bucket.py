@@ -1,3 +1,5 @@
+import base64
+import hashlib
 
 import six
 import urllib
@@ -491,7 +493,7 @@ class Bucket(object):
     def initiate_multipart_upload(self, key_name, headers=None,
                                   reduced_redundancy=False,
                                   metadata=None, encrypt_key=False,
-                                  policy=None, calc_md5=True):
+                                  policy=None, calc_encrypt_md5=True):
         """
         Start a multipart upload operation.
             Note: After you initiate multipart upload and upload one or more
@@ -520,11 +522,15 @@ class Bucket(object):
                 self.connection.provider)
         if self.connection.local_encrypt:
             crypts = Crypts(self.connection.key)
-            crypts.calc_md5 = calc_md5
+            crypts.calc_md5 = calc_encrypt_md5
+            crypts.action_info = "init_multi"
+            md5_generator = hashlib.md5()
+            md5_generator.update(crypts.key)
+            headers["x-kss-meta-key"] = base64.b64encode(md5_generator.hexdigest())
+            headers["x-kss-meta-iv"] = base64.b64encode(crypts.first_iv)
             response = self.connection.make_request('POST', self.name, key_name,
                                                 query_args=query_args,
-                                                headers=headers,action_info="init_multi",
-                                                crypt_context = crypts)
+                                                headers=headers)
         else:
             response = self.connection.make_request('POST', self.name, key_name,
                                                     query_args=query_args,
@@ -544,7 +550,7 @@ class Bucket(object):
                 response.status, response.reason, body)
 
     def complete_multipart_upload(self, key_name, upload_id,
-                                  xml_body, headers=None, crypt_context=None):
+                                  xml_body, headers=None):
         """
         Complete a multipart upload operation.
         """
@@ -554,9 +560,7 @@ class Bucket(object):
         headers['Content-Type'] = 'text/xml'
         response = self.connection.make_request('POST', self.name, key_name,
                                                 query_args=query_args,
-                                                headers=headers, data=xml_body,
-                                                action_info="complete_multi",
-                                                crypt_context = crypt_context)
+                                                headers=headers, data=xml_body)
         contains_error = False
         body = response.read().decode('utf-8')
         # Some errors will be reported in the body of the response

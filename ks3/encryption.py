@@ -20,6 +20,8 @@ class Crypts(object):
         self.iv_dict = {}
         self.pad_dict = self.init_pad_dict()
         self.calc_md5 = True
+        self.action_info = ""
+        self.is_last_part = False
 
     def init_pad_dict(self):
         temp_dict={}
@@ -57,12 +59,13 @@ class Crypts(object):
 
     def generate_key(self, length, path, file_name):
         sk = Random.new().read(length)
-        f = open(path+"/"+file_name,"w")
+        f = open(path+"/"+file_name,"wb")
         f.write(sk)
         f.close()
     
 if __name__ == '__main__':
     cry = Crypts("1233321112345678")
+    cry.generate_key(16,"/tmp","aes_key.txt")
     # str0 = ""
     # str0 = "16161616161616161616161616161616"
     # e0 = cry.encrypt(str0,cry.first_iv)
