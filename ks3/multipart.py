@@ -250,6 +250,7 @@ class MultiPartUpload(object):
             fp.seek(0,os.SEEK_END)
             part_size = fp.tell()
             fp.seek(0,os.SEEK_SET)
+            assert part_size, "upload part size can not be 0 !"
             self.total_size = os.fstat(fp.fileno()).st_size
             if part_size == self.total_size:
                 assert is_last_part != "origin", "Please indicate 'is_last_part=False/True' \
