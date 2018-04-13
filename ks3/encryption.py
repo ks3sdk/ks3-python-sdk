@@ -20,6 +20,8 @@ class Crypts(object):
         self.iv_dict = {}
         self.pad_dict = self.init_pad_dict()
         self.calc_md5 = True
+        self.action_info = ""
+        self.is_last_part = False
 
     def init_pad_dict(self):
         temp_dict={}
@@ -57,7 +59,7 @@ class Crypts(object):
     @staticmethod
     def generate_key(path, file_name):
         sk = Random.new().read(16)
-        f = open(path+"/"+file_name,"w")
+        f = open(path+"/"+file_name,"wb")
         f.write(sk)
         f.close()
     

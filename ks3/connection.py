@@ -153,15 +153,15 @@ class Connection(object):
     def load_key(self, path):
         error_msg = "In local_encrypt mode, we need you to indicate the location of your private key. Set value for 'local_key_path' while initiate connection."
         assert path, error_msg
-        with open(path) as ak_file:
+        with open(path, 'rb') as ak_file:
             assert os.path.getsize(path), "The key file should not be empty"
             content = ak_file.read()
-            assert len(content.strip()) == 16,"The key's length should be 16"
+            assert len(content.strip()) == 16, "The key's length should be 16"
             self.key = content.strip()
         
 
     def make_request(self, method, bucket="", key="", data="",
-            headers=None, query_args=None, metadata=None, action_info="",crypt_context=None):
+            headers=None, query_args=None, metadata=None):
         if not headers:
             headers = {}
         if not query_args:
@@ -171,8 +171,7 @@ class Connection(object):
 
         resp = make_request(self.host, self.port, self.access_key_id,
                             self.access_key_secret, method, bucket, key,
-                            query_args, headers, data, metadata, is_secure=self.is_secure, domain_mode=self.domain_mode, 
-                            action_info=action_info, crypt_context = crypt_context)
+                            query_args, headers, data, metadata, is_secure=self.is_secure, domain_mode=self.domain_mode)
         
         return resp
 

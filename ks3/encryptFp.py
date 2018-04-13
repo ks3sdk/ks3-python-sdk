@@ -56,45 +56,67 @@ class EncryptFp (object):
                             self.calc_iv = encrypt_data[-self.block_size:]
                             self.crypt_context.calc_iv = self.calc_iv
                     elif self.type == "upload_part":
-                        if self.isUploadFirstPart:
-                            # For multi, the first part's first part will add a prefix of iv.
-                            if not self.calc_iv:
-                                if self.isUploadLastPart == True and self.block_count == self.block_total_count:
-                                    # A very special circumstance: a short piece of data that is both the first of the
-                                    # first and the last of the last.
-                                    encrypt_data = self.crypt_handler.encrypt(data, self.first_iv)
-                                    encrypt_data = self.first_iv + encrypt_data
-                                else:
-                                    encrypt_data = self.crypt_handler.encrypt_without_padding(data,self.first_iv)
-                                    encrypt_data = self.first_iv+encrypt_data
-                            elif self.isUploadLastPart == False:
-                                encrypt_data = self.crypt_handler.encrypt_without_padding(data, self.calc_iv)
-                            elif self.isUploadLastPart == True and self.block_count == self.block_total_count:
-                                # When the part is the firstPart AND the lastPart.
-                                encrypt_data = self.crypt_handler.encrypt(data, self.calc_iv)
-                            elif self.isUploadLastPart == True:
-                                encrypt_data = self.crypt_handler.encrypt_without_padding(data, self.calc_iv)
-                            else:
-                                raise Exception
-                        elif self.isUploadLastPart == False:
-                            # The normal part that is neither the first nor the last one.
-                            if self.block_count == 1:
-                                self.calc_iv = self.crypt_context.iv_dict[self.crypt_context.part_num-1]
-                            encrypt_data = self.crypt_handler.encrypt_without_padding(data, self.calc_iv)
+                        need_prefix = False
+                        if self.isUploadFirstPart and self.block_count == 1:
+                            pre_iv = self.first_iv
+                            need_prefix = True
                         else:
-                            # The last part.
-                            # The last part's parts use 'encrypt' instead of 'encrypt_without_padding'
-                            # because the last part's last part need paddling.
-                            if self.block_count == 1 and self.block_count != self.block_total_count:
-                                encrypt_data = self.crypt_handler.encrypt_without_padding(data, self.crypt_context.iv_dict[self.crypt_context.part_num-1])
-                            elif self.block_count == 1 and self.block_count == self.block_total_count:
-                                encrypt_data = self.crypt_handler.encrypt(data, self.crypt_context.iv_dict[self.crypt_context.part_num-1])
-                            elif self.block_count == self.block_total_count:
-                                encrypt_data = self.crypt_handler.encrypt(data, self.calc_iv)
+                            last_part_num = self.crypt_context.part_num - 1
+                            if last_part_num > 0 and self.block_count == 1:
+                                if self.crypt_context.iv_dict.get(last_part_num):
+                                    self.calc_iv = self.crypt_context.iv_dict.get(last_part_num)
                             else:
-                                encrypt_data = self.crypt_handler.encrypt_without_padding(data,self.calc_iv)
+                                if not self.calc_iv:
+                                    raise ValueError(
+                                        "upload part[%d] encryption error:calc_vi miss" % self.crypt_context.part_num)
+                            pre_iv = self.calc_iv
+                        if self.isUploadLastPart and self.block_count == self.block_total_count:
+                            encrypt_data = self.crypt_handler.encrypt(data, pre_iv)
+                        else:
+                            encrypt_data = self.crypt_handler.encrypt_without_padding(data, pre_iv)
+                        if need_prefix:
+                            encrypt_data = self.first_iv + encrypt_data
                         self.calc_iv = encrypt_data[-self.block_size:]
                         self.crypt_context.iv_dict[self.crypt_context.part_num] = self.calc_iv
+                        # if self.isUploadFirstPart:
+                        #     # For multi, the first part's first part will add a prefix of iv.
+                        #     if not self.calc_iv:
+                        #         if self.isUploadLastPart and self.block_count == self.block_total_count:
+                        #             # A very special circumstance: a short piece of data that is both the first of the
+                        #             # first and the last of the last.
+                        #             encrypt_data = self.crypt_handler.encrypt(data, self.first_iv)
+                        #             encrypt_data = self.first_iv + encrypt_data
+                        #         else:
+                        #             encrypt_data = self.crypt_handler.encrypt_without_padding(data,self.first_iv)
+                        #             encrypt_data = self.first_iv+encrypt_data
+                        #     elif not self.isUploadLastPart:
+                        #         encrypt_data = self.crypt_handler.encrypt_without_padding(data, self.calc_iv)
+                        #     elif self.isUploadLastPart and self.block_count == self.block_total_count:
+                        #         # When the part is the firstPart AND the lastPart.
+                        #         encrypt_data = self.crypt_handler.encrypt(data, self.calc_iv)
+                        #     elif self.isUploadLastPart:
+                        #         encrypt_data = self.crypt_handler.encrypt_without_padding(data, self.calc_iv)
+                        #     else:
+                        #         raise Exception
+                        # elif not self.isUploadLastPart:
+                        #     # The normal part that is neither the first nor the last one.
+                        #     if self.block_count == 1:
+                        #         self.calc_iv = self.crypt_context.iv_dict[self.crypt_context.part_num-1]
+                        #     encrypt_data = self.crypt_handler.encrypt_without_padding(data, self.calc_iv)
+                        # else:
+                        #     # The last part.
+                        #     # The last part's parts use 'encrypt' instead of 'encrypt_without_padding'
+                        #     # because the last part's last part need paddling.
+                        #     if self.block_count == 1 and self.block_count != self.block_total_count:
+                        #         encrypt_data = self.crypt_handler.encrypt_without_padding(data, self.crypt_context.iv_dict[self.crypt_context.part_num-1])
+                        #     elif self.block_count == 1 and self.block_count == self.block_total_count:
+                        #         encrypt_data = self.crypt_handler.encrypt(data, self.crypt_context.iv_dict[self.crypt_context.part_num-1])
+                        #     elif self.block_count == self.block_total_count:
+                        #         encrypt_data = self.crypt_handler.encrypt(data, self.calc_iv)
+                        #     else:
+                        #         encrypt_data = self.crypt_handler.encrypt_without_padding(data,self.calc_iv)
+                        # self.calc_iv = encrypt_data[-self.block_size:]
+                        # self.crypt_context.iv_dict[self.crypt_context.part_num] = self.calc_iv
                         # print len(encrypt_data), self.block_count, self.block_total_count
                     return encrypt_data
             if name == "seek":

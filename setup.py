@@ -8,7 +8,7 @@ with open('README.md', 'rb') as f:
 
 setup(
     name='ks3sdk',
-    version='1.0.7',
+    version='1.0.9',
     description='Kingsoft Standard Storage Service SDK',
     long_description=readme,
     packages=['ks3'],
