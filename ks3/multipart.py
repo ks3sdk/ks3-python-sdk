@@ -279,7 +279,7 @@ class MultiPartUpload(object):
         return key
     def add_all_part(self, part_num):
         sum = 0
-        for i in range(1,part_num+1):
+        for i in range(1,part_num):
             if self.size_accumulator.get(i):
                 sum += self.size_accumulator[i]
         return sum
