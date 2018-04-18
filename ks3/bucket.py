@@ -1,3 +1,5 @@
+import base64
+import hashlib
 
 import six
 import urllib
@@ -14,6 +16,10 @@ from ks3.key import Key
 from ks3.multipart import MultiPartUpload, CompleteMultiPartUpload
 from ks3.prefix import Prefix
 from ks3.resultset import ResultSet
+try:
+    from ks3.encryption import Crypts
+except:
+    pass 
 
 class Bucket(object):
 
@@ -240,6 +246,7 @@ class Bucket(object):
             k.handle_encryption_headers(response)
             k.handle_restore_headers(response)
             k.handle_addl_headers(response.getheaders())
+            k.handle_user_metas(response)
             return k, response
         else:
             if response.status == 404:
@@ -530,7 +537,7 @@ class Bucket(object):
     def initiate_multipart_upload(self, key_name, headers=None,
                                   reduced_redundancy=False,
                                   metadata=None, encrypt_key=False,
-                                  policy=None):
+                                  policy=None, calc_encrypt_md5=True):
         """
         Start a multipart upload operation.
             Note: After you initiate multipart upload and upload one or more
@@ -557,12 +564,26 @@ class Bucket(object):
 
         headers = ks3.utils.merge_meta(headers, metadata,
                 self.connection.provider)
-        response = self.connection.make_request('POST', self.name, key_name,
+        if self.connection.local_encrypt:
+            crypts = Crypts(self.connection.key)
+            crypts.calc_md5 = calc_encrypt_md5
+            crypts.action_info = "init_multi"
+            md5_generator = hashlib.md5()
+            md5_generator.update(crypts.key)
+            headers["x-kss-meta-key"] = base64.b64encode(md5_generator.hexdigest())
+            headers["x-kss-meta-iv"] = base64.b64encode(crypts.first_iv)
+            response = self.connection.make_request('POST', self.name, key_name,
                                                 query_args=query_args,
                                                 headers=headers)
+        else:
+            response = self.connection.make_request('POST', self.name, key_name,
+                                                    query_args=query_args,
+                                                    headers=headers)
         body = response.read()
         if response.status == 200:
             resp = MultiPartUpload(self)
+            if self.connection.local_encrypt:
+                resp.set_crypt_context(crypts)
             h = handler.XmlHandler(resp, self)
             if not isinstance(body, bytes):
                 body = body.encode('utf-8')

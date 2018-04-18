@@ -1,6 +1,10 @@
-
+import os
 from ks3 import user
 from ks3 import handler
+try:
+    from ks3.encryption import Crypts
+except:
+    pass
 import xml.sax
 
 
@@ -120,6 +124,11 @@ class MultiPartUpload(object):
         self.max_parts = None
         self.is_truncated = False
         self._parts = None
+        self.crypt_context = None
+        # self.size_accumulator = 0
+        self.size_accumulator = {}
+        self.total_size = 0
+
 
     def __repr__(self):
         return '<MultiPartUpload %s>' % self.key_name
@@ -136,6 +145,9 @@ class MultiPartUpload(object):
             s += '  </Part>\n'
         s += '</CompleteMultipartUpload>'
         return s
+
+    def set_crypt_context(self, crypt):
+        self.crypt_context = crypt
 
     def startElement(self, name, attrs, connection):
         #if name == 'Initiator':
@@ -205,7 +217,7 @@ class MultiPartUpload(object):
             return self._parts
 
     def upload_part_from_file(self, fp, part_num, headers=None, replace=True,
-                              cb=None, num_cb=10, md5=None, size=None):
+                              cb=None, num_cb=10, md5=None, size=None, is_last_part="origin"):
         """
         Upload another part of this MultiPart Upload.
 
@@ -233,12 +245,45 @@ class MultiPartUpload(object):
             raise ValueError('Part numbers must be greater than zero')
         query_args = 'partNumber=%d&uploadId=%s' % (part_num, self.id)
         key = self.bucket.new_key(self.key_name)
-        key.set_contents_from_file(fp, headers=headers, replace=replace,
-                                   cb=cb, num_cb=num_cb, md5=md5,
-                                   reduced_redundancy=False,
-                                   query_args=query_args, size=size)
+        if self.bucket.connection.local_encrypt and self.crypt_context:
+            #Get sizes of the whole file and the part
+            fp.seek(0,os.SEEK_END)
+            part_size = fp.tell()
+            fp.seek(0,os.SEEK_SET)
+            assert part_size, "upload part size can not be 0 !"
+            self.total_size = os.fstat(fp.fileno()).st_size
+            if part_size == self.total_size:
+                assert is_last_part != "origin", "Please indicate 'is_last_part=False/True' \
+                                                  when calling upload_part_from_file."
+            else:
+                size_now = self.add_all_part(part_num)
+                temp_accumulator = size_now + part_size
+                if temp_accumulator == self.total_size:
+                    is_last_part = True
+                else:
+                    is_last_part = False
+            if not is_last_part:
+                assert (part_size % 16 == 0), "The part size must be multiples of 16 except the last part in local encrypt mode."
+            self.crypt_context.part_num = part_num
+            self.crypt_context.is_last_part = is_last_part
+            self.crypt_context.action_info = "upload_part"
+            response = key.set_contents_from_file(fp, headers=headers, replace=replace,
+                                                  cb=cb, num_cb=num_cb, md5=md5,reduced_redundancy=False,
+                                                  query_args=query_args, size=size, crypt_context=self.crypt_context)
+            # key.set_contents_from_file() raise an exception when fail.
+            self.size_accumulator[part_num] = part_size
+        else:
+            key.set_contents_from_file(fp, headers=headers, replace=replace,
+                                       cb=cb, num_cb=num_cb, md5=md5,
+                                       reduced_redundancy=False,
+                                       query_args=query_args, size=size)
         return key
-
+    def add_all_part(self, part_num):
+        sum = 0
+        for i in range(1,part_num):
+            if self.size_accumulator.get(i):
+                sum += self.size_accumulator[i]
+        return sum
     def copy_part_from_key(self, src_bucket_name, src_key_name, part_num,
                            start=None, end=None, src_version_id=None,
                            headers=None):
