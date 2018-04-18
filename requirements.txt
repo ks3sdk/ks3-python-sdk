@@ -1,1 +1,2 @@
 six
+pycrypto==2.6.1

@@ -345,10 +345,10 @@ Crypts.generate_key('your_path', 'key_name')
 
 ```
 #PUT时取消MD5 CHECK：
-ret = kw.set_contents_from_string(test_str, calc_md5=False)
-ret = kw.set_contents_from_filename(test_path, calc_md5=False)
+ret = kw.set_contents_from_string(test_str, calc_encrypt_md5=False)
+ret = kw.set_contents_from_filename(test_path, calc_encrypt_md5=False)
 #分块时取消MD5 CHECK：
-mp = b.initiate_multipart_upload(os.path.basename(path), calc_md5=False)
+mp = b.initiate_multipart_upload(os.path.basename(path), calc_encrypt_md5=False)
 ```
 * 用户key的MD5值将作为自定义header放入元数据，方便您后续可能的验证操作。对key的MD5计算方法如下：
 
