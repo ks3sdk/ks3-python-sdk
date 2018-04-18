@@ -8,6 +8,11 @@
 
 
 ### 安装python sdk
+#### 在线安装
+
+	pip install ks3sdk
+	
+#### 本地安装
 1、通过git下载SDK到本地
 
 	git clone https://github.com/ks3sdk/ks3-python-sdk.git
@@ -49,6 +54,7 @@
 * [Head Object](#head-object) 获取Object元信息
 * [Get Object](#get-object) 下载Object数据
 * [Put Object](#put-object) 上传Object数据
+* [Put Object Copy](#put-object-copy) 复制Object数据
 * [Delete Object](#delete-object) 删除Object数据
 * [List Objects](#list-objects) 列举Bucket内的Object
 * [Get Object ACL](#get-object-acl) 获得Bucket的acl
@@ -182,6 +188,19 @@
 
     k.set_contents_from_string('This is a test of S3')
     
+#### Put Object Copy
+*复制Object数据* 
+
+将指定Bucket下的文件复制到本Bucket下（需要对源Bucket下的文件具有读权限）
+
+    bucket_name = "YOUR_DST_BUCKET_NAME"
+    key_name = "YOUR_DST_KEY_NAME"
+    try: 
+	    b = c.get_bucket(bucket_name)
+	    b.copy_key(key_name,"YOUR_SRC_BUCKET_NAME","YOUR_SRC_KEY_NAME")
+	 except:
+	 	pass #异常处理
+        
 #### Delete Object
 *删除Object数据*
 

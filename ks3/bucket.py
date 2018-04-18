@@ -61,6 +61,50 @@ class Bucket(object):
             raise ValueError('Empty key names are not allowed')                                                  
         return Key(self, key_name)
 
+    def copy_key(self, new_key_name, src_bucket_name, src_key_name, headers=None, query_args=None, encrypt_key=False):
+        """
+        Create a new key in the bucket by copying another existing key.
+        :param new_key_name: The name of the new key
+        :param src_bucket_name: The name of the source bucket
+        :param src_key_name: The name of the source key
+        :param headers: A dictionary of header name/value pairs.
+        :param query_args: A string of additional querystring arguments
+            to append to the request
+        :param encrypt_key: If True, the new copy of the object will
+            be encrypted on the server-side by KS3 and will be stored
+            in an encrypted form while at rest in KS3.
+        :return:
+        """
+        if not new_key_name or not src_key_name:
+            raise ValueError('Empty key names are not allowed')
+        if not src_bucket_name:
+            raise ValueError('Empty bucket name are not allowed')
+        headers = headers or {}
+        provider = self.connection.provider
+        if encrypt_key:
+            headers[provider.server_side_encryption_header] = 'AES256'
+        src = '/%s/%s' % (src_bucket_name, urllib.quote_plus(src_key_name.encode('utf-8')))
+        src = src.replace('//', '/%2F')
+        headers[provider.copy_source_header] = str(src)
+        response = self.connection.make_request('PUT', self.name, new_key_name,
+                                                headers=headers,
+                                                query_args=query_args)
+        body = response.read()
+        if response.status == 200:
+            key = self.new_key(new_key_name)
+            h = handler.XmlHandler(key, self)
+            if not isinstance(body, bytes):
+                body = body.encode('utf-8')
+            xml.sax.parseString(body, h)
+            if hasattr(key, 'Error'):
+                raise provider.storage_copy_error(key.Code, key.Message, body)
+            return key
+        else:
+            raise provider.storage_response_error(response.status,
+                                                  response.reason, body)
+
+
+
     def generate_url(self, expires_in, method='GET', headers=None,
                      force_http=False, response_headers=None,
                      expires_in_absolute=False):
