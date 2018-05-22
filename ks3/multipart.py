@@ -79,6 +79,8 @@ class Part(object):
         return None
 
     def endElement(self, name, value, connection):
+        if name.startswith("ns2"):
+            name = name.split(":")[1]
         if name == 'PartNumber':
             self.part_number = int(value)
         elif name == 'LastModified':
