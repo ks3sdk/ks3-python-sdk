@@ -39,6 +39,8 @@ class CompleteMultiPartUpload(object):
         return None
 
     def endElement(self, name, value, connection):
+        if name.startswith("ns2"):
+            name = name.split(":")[1]
         if name == 'Location':
             self.location = value
         elif name == 'Bucket':
@@ -79,6 +81,8 @@ class Part(object):
         return None
 
     def endElement(self, name, value, connection):
+        if name.startswith("ns2"):
+            name = name.split(":")[1]
         if name == 'PartNumber':
             self.part_number = int(value)
         elif name == 'LastModified':
@@ -166,6 +170,8 @@ class MultiPartUpload(object):
         return None
 
     def endElement(self, name, value, connection):
+        if name.startswith("ns2"):
+            name = name.split(":")[1]
         if name == 'Bucket':
             self.bucket_name = value
         elif name == 'Key':
