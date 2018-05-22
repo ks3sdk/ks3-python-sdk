@@ -166,6 +166,8 @@ class MultiPartUpload(object):
         return None
 
     def endElement(self, name, value, connection):
+        if name.startswith("ns2"):
+            name = name.split(":")[1]
         if name == 'Bucket':
             self.bucket_name = value
         elif name == 'Key':
