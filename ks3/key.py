@@ -4,10 +4,12 @@ import hashlib
 import math
 import mimetypes
 import os
-import urllib
 import re
 from hashlib import md5
-
+try:
+    import urllib.parse as parse
+except ImportError:
+    import urllib as parse
 import binascii
 
 import errno
@@ -82,9 +84,9 @@ class Key(object):
 
     def __repr__(self):
         if self.bucket:
-            name = u'<Key: %s,%s>' % (self.bucket.name, self.name)
+            name = '<Key: %s,%s>' % (self.bucket.name, self.name)
         else:
-            name = u'<Key: None,%s>' % self.name
+            name = '<Key: None,%s>' % self.name
 
         # Encode to bytes for Python 2 to prevent display decoding issues
         if not isinstance(name, str):
@@ -349,8 +351,8 @@ class Key(object):
                 fp = EncryptFp(fp, crypt_context, "put")
                 md5_generator = hashlib.md5()
                 md5_generator.update(crypt_context.key)
-                headers["x-kss-meta-key"] = base64.b64encode(md5_generator.hexdigest())
-                headers["x-kss-meta-iv"] = base64.b64encode(crypt_context.first_iv)
+                headers["x-kss-meta-key"] = base64.b64encode(md5_generator.hexdigest().encode()).decode()
+                headers["x-kss-meta-iv"] = base64.b64encode(crypt_context.first_iv).decode()
             if crypt_context.action_info == "upload_part":
                 if crypt_context.part_num == 1:
                     fp = EncryptFp(fp, crypt_context, "upload_part",isUploadFirstPart=True, isUploadLastPart=crypt_context.is_last_part)
@@ -369,7 +371,7 @@ class Key(object):
             else:
                 headers['Content-Length'] = str(len(fp))
             headers["x-kss-meta-unencrypted-content-length"] = str(self.size)
-
+            print(headers)
             resp = self.bucket.connection.make_request(
                 'PUT',
                 self.bucket.name,
@@ -562,6 +564,7 @@ class Key(object):
             if not replace:
                 if self.bucket.lookup(self.name):
                     return
+            from ks3.encryption import Crypts
             if self.bucket.connection.local_encrypt and self.size:
                 if not crypt_context:
                     crypt_context = Crypts(self.bucket.connection.key)
@@ -604,7 +607,7 @@ class Key(object):
         parameters.
         """
         if not isinstance(string_data, bytes):
-            string_data = string_data.encode("utf-8")
+            string_data = string_data.encode('utf-8')
         fp = BytesIO(string_data)
         r = self.set_contents_from_file(fp, headers, replace, cb, num_cb,
                                         policy, md5, reduced_redundancy,
@@ -652,7 +655,7 @@ class Key(object):
         if response_headers:
             for key in response_headers:
                 query_args.append('%s=%s' % (
-                    key, urllib.quote(response_headers[key])))
+                    key, parse.quote(response_headers[key])))
         query_args = '&'.join(query_args)
         self.open('r', headers, query_args=query_args,
                   override_num_retries=override_num_retries)
@@ -680,6 +683,7 @@ class Key(object):
             last_iv = ""
             total_part = math.ceil(float(self.size)/self.BufferSize)
             for bytes in self:
+                print(bytes)
                 if self.bucket.connection.local_encrypt:
                     provider = self.bucket.connection.provider
                     user_key = self.bucket.connection.key
@@ -752,7 +756,7 @@ class Key(object):
             response_headers = self.resp.msg
             #self.metadata = boto.utils.get_aws_metadata(response_headers,
             #                                            provider)
-            for name, value in response_headers.items():
+            for name, value in list(response_headers.items()):
                 # To get correct size for Range GETs, use Content-Range
                 # header if one was returned. If not, use Content-Length
                 # header.
@@ -947,7 +951,7 @@ class Key(object):
         #print response.msg
         provider = self.bucket.connection.provider
         user_key_reg = provider.metadata_prefix+".*"
-        for header_key, header_value in response.msg.items():
+        for header_key, header_value in list(response.msg.items()):
             reg_match = re.match(user_key_reg, header_key)
             if reg_match:
                 self.user_meta[header_key] = header_value

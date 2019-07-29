@@ -1,7 +1,10 @@
 import base64
 import hmac
 import time
-import urllib
+try:
+    import urllib.parse as parse  # for Python 3
+except ImportError:
+    import urllib as parse  # for Python 2
 
 try:
     from hashlib import sha1 as sha
@@ -29,7 +32,7 @@ qsa_of_interest = ['acl', 'cors', 'defaultObjectAcl', 'location', 'logging',
 def url_encode(key):
     if not key:
         return ""
-    encode_key = urllib.quote_plus(key.encode('utf-8'))
+    encode_key = parse.quote_plus(key.encode('utf-8'))
     if '%20' in encode_key:
         encode_key = encode_key.replace('%20', '+')
 
@@ -62,7 +65,7 @@ def encode_params(query_args):
                 map_args[k] = v
     if not map_args:
         return ""
-    sorted_keys = map_args.keys()
+    sorted_keys = list(map_args.keys())
     sorted_keys.sort()
     buf_list = []
     for k in sorted_keys:
@@ -99,7 +102,7 @@ def canonical_headers(headers):
             interesting_headers[lk] = headers[header_key]
     if not interesting_headers:
         return ""
-    sorted_header_keys = interesting_headers.keys()
+    sorted_header_keys = list(interesting_headers.keys())
     sorted_header_keys.sort()
     buf_list = []
     for header_key in sorted_header_keys:
@@ -140,9 +143,11 @@ def canonical_string(method, bucket="", key="", query_args=None, headers=None, e
 
 
 def encode(secret_access_key, str_to_encode, urlencode=False):
-    b64_hmac = base64.encodestring(hmac.new(secret_access_key, str_to_encode, sha).digest()).strip()
+    secret_access_key = secret_access_key.encode('utf-8')
+    str_to_encode = str_to_encode.encode('utf-8')
+    b64_hmac = base64.b64encode(hmac.new(secret_access_key, str_to_encode, sha).digest()).strip().decode('utf-8')
     if urlencode:
-        return urllib.quote_plus(b64_hmac)
+        return parse.quote_plus(b64_hmac)
     else:
         return b64_hmac
 
@@ -150,7 +155,7 @@ def encode(secret_access_key, str_to_encode, urlencode=False):
 def add_auth_header(access_key_id, secret_access_key, headers, method, bucket, key, query_args):
     if not access_key_id:
         return
-    if not headers.has_key('Date'):
+    if 'Date' not in headers:
         headers['Date'] = time.strftime("%a, %d %b %Y %H:%M:%S GMT", time.gmtime())
 
     c_string = canonical_string(method, bucket, key, query_args, headers)

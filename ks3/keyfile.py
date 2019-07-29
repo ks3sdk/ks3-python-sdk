@@ -112,7 +112,7 @@ class KeyFile():
   def flush(self):
     raise NotImplementedError('flush not implemented in KeyFile')
 
-  def next(self):
+  def __next__(self):
     raise NotImplementedError('next not implemented in KeyFile')
 
   def readinto(self):
