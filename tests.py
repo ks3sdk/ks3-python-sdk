@@ -148,6 +148,21 @@ class TestGetObject(unittest.TestCase):
     def test_head_object(self):
         pass
 
+class TestEncryptionUploadObject(unittest.TestCase):
+    # Create a object key in specified bucket
+    def test_encryption_upload(self):
+        from ks3.encryption import Crypts
+        Crypts.generate_key('D:/', 'key.txt')
+        c = Connection(ak, sk, host="ks3-cn-beijing.ksyun.com", is_secure=False, domain_mode=False, local_encrypt=True, local_key_path="D:/key.txt")
+        b = c.get_bucket(test_bucket)
+        #put
+        kw = b.new_key(test_key)
+        ret = kw.set_contents_from_string("some thing")
+        #get
+        get_key = b.get_key(test_key)
+        s = get_key.get_contents_as_string()
+        print("Result:", s)
+
 class TestKeyLink(unittest.TestCase):
     def test_key_link(self):
         bucket = conn.get_bucket(test_bucket)
@@ -191,14 +206,14 @@ class TestMultipartUploadObject(unittest.TestCase):
         from filechunkio import FileChunkIO
         bucket = conn.get_bucket(test_bucket)
 
-        source_path = 'D:/1.exe'
+        source_path = 'D:/test.txt'
         source_size = os.stat(source_path).st_size
 
         mp = bucket.initiate_multipart_upload(os.path.basename(source_path), policy="public-read-write")
         print(mp.id)
 
-        # chunk_size = 52428800
-        chunk_size = 52428800
+        # chunk_size = 5242880
+        chunk_size = 5242880
         chunk_count = int(math.ceil(source_size // chunk_size))
 
         for i in range(chunk_count + 1):
@@ -207,6 +222,34 @@ class TestMultipartUploadObject(unittest.TestCase):
             with FileChunkIO(source_path, 'r', offset=offset,
                              bytes=bytes) as fp:
                 mp.upload_part_from_file(fp, part_num=i + 1)
+
+        mp.complete_upload()
+
+class TestEncryptionMultipartUploadObject(unittest.TestCase):
+    def test_encryption_multipart_upload(self):
+        import math, os
+        from ks3.encryption import Crypts
+        Crypts.generate_key('D:/', 'key.txt')
+        c = Connection(ak, sk, host="ks3-cn-beijing.ksyun.com", is_secure=False, domain_mode=False,
+                          local_encrypt=True, local_key_path="D:/key.txt")
+        from filechunkio import FileChunkIO
+        bucket = c.get_bucket(test_bucket)
+
+        source_path = 'D:/1.exe'
+        source_size = os.stat(source_path).st_size
+        mp = bucket.initiate_multipart_upload(os.path.basename(source_path), calc_encrypt_md5=False)
+        chunk_size = 5242880
+        chunk_count = int(math.ceil(source_size // chunk_size))
+        print(chunk_count)
+        for i in range(chunk_count + 1):
+            offset = chunk_size * i
+            last = False
+            bytes = min(chunk_size, source_size - offset)
+            if i == chunk_count + 1:
+                last = True
+            with FileChunkIO(source_path, 'r', offset=offset,
+                             bytes=bytes) as fp:
+                mp.upload_part_from_file(fp, part_num=i + 1, is_last_part=last)
 
         mp.complete_upload()
 

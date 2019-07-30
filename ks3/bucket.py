@@ -573,8 +573,8 @@ class Bucket(object):
             crypts.action_info = "init_multi"
             md5_generator = hashlib.md5()
             md5_generator.update(crypts.key)
-            headers["x-kss-meta-key"] = base64.b64encode(md5_generator.hexdigest())
-            headers["x-kss-meta-iv"] = base64.b64encode(crypts.first_iv)
+            headers["x-kss-meta-key"] = base64.b64encode(md5_generator.hexdigest().encode()).decode()
+            headers["x-kss-meta-iv"] = base64.b64encode(crypts.first_iv).decode()
             response = self.connection.make_request('POST', self.name, key_name,
                                                 query_args=query_args,
                                                 headers=headers)

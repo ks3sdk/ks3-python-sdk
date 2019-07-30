@@ -371,7 +371,6 @@ class Key(object):
             else:
                 headers['Content-Length'] = str(len(fp))
             headers["x-kss-meta-unencrypted-content-length"] = str(self.size)
-            print(headers)
             resp = self.bucket.connection.make_request(
                 'PUT',
                 self.bucket.name,
@@ -682,16 +681,15 @@ class Key(object):
             counter = 1
             last_iv = ""
             total_part = math.ceil(float(self.size)/self.BufferSize)
-            for bytes in self:
-                print(bytes)
+            for byte in self:
                 if self.bucket.connection.local_encrypt:
                     provider = self.bucket.connection.provider
                     user_key = self.bucket.connection.key
                     crypt_handler = Crypts(user_key)
                     if counter == 1:
                         # For first block, drop first 16 bytes(the subjoin iv).
-                        local_iv = bytes[:crypt_handler.block_size]
-                        bytes = bytes[crypt_handler.block_size:]
+                        local_iv = byte[:crypt_handler.block_size]
+                        byte = byte[crypt_handler.block_size:]
                         server_iv = self.user_meta[provider.metadata_prefix+"iv"]
                         server_iv = base64.b64decode(server_iv)
                         if server_iv and local_iv != server_iv:
@@ -699,23 +697,25 @@ class Key(object):
                         user_iv=local_iv
                     else:
                         user_iv = last_iv
-                    last_iv = bytes[-crypt_handler.block_size:]
+                    last_iv = byte[-crypt_handler.block_size:]
                     if counter == total_part:
                         # Special process of the last part with check code appending to it's end.
-                        full_content = crypt_handler.decrypt(bytes,user_iv)
+                        full_content = crypt_handler.decrypt(byte,user_iv).decode()
                         pad_content_char = full_content[-1]
                         for key in crypt_handler.pad_dict:
                             if crypt_handler.pad_dict[key] == pad_content_char:
                                 pad_content_char = key
                         decrypt = full_content[:-int(pad_content_char)]
                     else:
-                        decrypt = crypt_handler.decrypt(bytes, user_iv)
-                    bytes = decrypt
+                        decrypt = crypt_handler.decrypt(byte, user_iv)
+                    byte = decrypt
                     counter += 1
-                fp.write(bytes)
-                data_len += len(bytes)
+                if not isinstance(byte, bytes):
+                    byte = byte.encode()
+                fp.write(byte)
+                data_len += len(byte)
                 for alg in digesters:
-                    digesters[alg].update(bytes)
+                    digesters[alg].update(byte)
                 if cb:
                     if cb_size > 0 and data_len >= cb_size:
                         break
