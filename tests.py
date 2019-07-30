@@ -8,9 +8,9 @@ from ks3.key import Key
 from ks3.acl import Policy, ACL, Grant
 from ks3.user import User
 
-ak = 'Vc7A7P4Z6wBy+wrOE6ff'
-sk = '/0B2kDL00w/ghM6NGC0fcJSQRXEFgVGCadDKVPsI'
-conn = Connection(ak, sk, host="ks3-cn-beijing.ksyun.com")
+ak = 'YOUR_ACCESS_KEY'
+sk = 'YOUR_SECRET_KEY'
+conn = Connection(ak, sk, host="")
 test_bucket = 'sdktestt'
 test_key = 'test_key'
 
@@ -153,7 +153,7 @@ class TestEncryptionUploadObject(unittest.TestCase):
     def test_encryption_upload(self):
         from ks3.encryption import Crypts
         Crypts.generate_key('D:/', 'key.txt')
-        c = Connection(ak, sk, host="ks3-cn-beijing.ksyun.com", is_secure=False, domain_mode=False, local_encrypt=True, local_key_path="D:/key.txt")
+        c = Connection(ak, sk, host="", is_secure=False, domain_mode=False, local_encrypt=True, local_key_path="D:/key.txt")
         b = c.get_bucket(test_bucket)
         #put
         kw = b.new_key(test_key)
@@ -230,7 +230,7 @@ class TestEncryptionMultipartUploadObject(unittest.TestCase):
         import math, os
         from ks3.encryption import Crypts
         Crypts.generate_key('D:/', 'key.txt')
-        c = Connection(ak, sk, host="ks3-cn-beijing.ksyun.com", is_secure=False, domain_mode=False,
+        c = Connection(ak, sk, host="", is_secure=False, domain_mode=False,
                           local_encrypt=True, local_key_path="D:/key.txt")
         from filechunkio import FileChunkIO
         bucket = c.get_bucket(test_bucket)
