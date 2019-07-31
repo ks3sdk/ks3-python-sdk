@@ -66,7 +66,7 @@ class BucketLogging(object):
 
     def to_xml(self):
         # caller is responsible to encode to utf-8
-        s = '<?xml version="1.0" encoding="UTF-8"?>'
+        s = u'<?xml version="1.0" encoding="UTF-8"?>'
         s += u'<BucketLoggingStatus xmlns="http://s3.amazonaws.com/doc/2006-03-01/">'
         #s += '<BucketLoggingStatus xmlns="http://ks3.ksyun.com">'
         if self.target is not None:

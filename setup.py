@@ -8,13 +8,12 @@ with open('README.md', 'rb') as f:
 
 setup(
     name='ks3sdk',
-    version='1.0.10',
+    version='1.0.11',
     description='Kingsoft Standard Storage Service SDK',
     long_description=readme,
     packages=['ks3'],
     install_requires=[
         'six',
-        'pycrypto==2.6.1'
     ],
     include_package_data=True,
     url='https://github.com/ks3sdk/ks3-python-sdk',
@@ -30,5 +29,6 @@ setup(
         'Programming Language :: Python :: 2',
         'Programming Language :: Python :: 2.6',
         'Programming Language :: Python :: 2.7'
+        'Programming Language :: Python :: 3.7'
     ]
 )
