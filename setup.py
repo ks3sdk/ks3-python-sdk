@@ -13,7 +13,7 @@ setup(
     long_description=readme,
     packages=['ks3'],
     install_requires=[
-        'six',
+        'six'
     ],
     include_package_data=True,
     url='https://github.com/ks3sdk/ks3-python-sdk',
@@ -28,7 +28,7 @@ setup(
         'Programming Language :: Python',
         'Programming Language :: Python :: 2',
         'Programming Language :: Python :: 2.6',
-        'Programming Language :: Python :: 2.7'
+        'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3.7'
     ]
 )
