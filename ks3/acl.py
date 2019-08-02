@@ -75,7 +75,7 @@ class Policy(object):
         if self.namespace is not None:
             s = '<AccessControlPolicy xmlns="{0}">'.format(self.namespace)
         else:
-            s = '<AccessControlPolicy>'     
+            s = '<AccessControlPolicy xmlns="http://s3.amazonaws.com/doc/2006-03-01/">'
         s += self.owner.to_xml()
         s += self.acl.to_xml()
         s += '</AccessControlPolicy>'

@@ -2,8 +2,11 @@ import base64
 import hashlib
 
 import six
-import urllib
 import xml
+try:
+    import urllib.parse as parse  # for Python 3
+except ImportError:
+    import urllib as parse  # for Python 2
 
 import ks3.utils
 from ks3 import handler
@@ -19,7 +22,7 @@ from ks3.resultset import ResultSet
 try:
     from ks3.encryption import Crypts
 except:
-    pass 
+    pass
 
 class Bucket(object):
 
@@ -83,7 +86,7 @@ class Bucket(object):
         provider = self.connection.provider
         if encrypt_key:
             headers[provider.server_side_encryption_header] = 'AES256'
-        src = '/%s/%s' % (src_bucket_name, urllib.quote_plus(src_key_name.encode('utf-8')))
+        src = '/%s/%s' % (src_bucket_name, parse.quote_plus(src_key_name.encode('utf-8')))
         src = src.replace('//', '/%2F')
         headers[provider.copy_source_header] = str(src)
         response = self.connection.make_request('PUT', self.name, new_key_name,
@@ -212,7 +215,7 @@ class Bucket(object):
             query_args_l['versionId'] = version_id
         if response_headers:
             for rk, rv in six.iteritems(response_headers):
-                query_args_l[rk] = urllib.quote(rv)
+                query_args_l[rk] = parse.quote(rv)
 
         key, resp = self._get_key_internal(key_name, headers, query_args_l)
         return key
@@ -225,7 +228,7 @@ class Bucket(object):
         response.read()
         # Allow any success status (2xx) - for example this lets us
         # support Range gets, which return status 206:
-        if response.status / 100 == 2:
+        if response.status // 100 == 2:
             k = Key(self)
             #provider = self.connection.provider
             #k.metadata = boto.utils.get_aws_metadata(response.msg, provider)
@@ -293,7 +296,7 @@ class Bucket(object):
         if initial_query_string:
             pairs.append(initial_query_string)
 
-        for key, value in sorted(params.items(), key=lambda x: x[0]):
+        for key, value in sorted(list(params.items()), key=lambda x: x[0]):
             if value is None:
                 continue
             key = key.replace('_', '-') 
@@ -304,9 +307,9 @@ class Bucket(object):
             if not isinstance(value, six.binary_type):
                 value = value.encode('utf-8')
             if value:
-                pairs.append(u'%s=%s' % (
-                    urllib.quote(key),
-                    urllib.quote(value)
+                pairs.append('%s=%s' % (
+                    parse.quote(key),
+                    parse.quote(value)
                 ))
 
         return '&'.join(pairs)
@@ -570,8 +573,8 @@ class Bucket(object):
             crypts.action_info = "init_multi"
             md5_generator = hashlib.md5()
             md5_generator.update(crypts.key)
-            headers["x-kss-meta-key"] = base64.b64encode(md5_generator.hexdigest())
-            headers["x-kss-meta-iv"] = base64.b64encode(crypts.first_iv)
+            headers["x-kss-meta-key"] = base64.b64encode(md5_generator.hexdigest().encode()).decode()
+            headers["x-kss-meta-iv"] = base64.b64encode(crypts.first_iv).decode()
             response = self.connection.make_request('POST', self.name, key_name,
                                                 query_args=query_args,
                                                 headers=headers)

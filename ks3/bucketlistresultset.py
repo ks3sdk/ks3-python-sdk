@@ -1,6 +1,10 @@
-
 import six
-import urllib
+
+try:
+    import urllib.parse as parse  # for Python 3
+except ImportError:
+    import urllib as parse  # for Python 2
+
 
 def bucket_lister(bucket, prefix='', delimiter='', marker=''):
     """
@@ -16,9 +20,9 @@ def bucket_lister(bucket, prefix='', delimiter='', marker=''):
         if k:
             marker = rs.next_marker or k.name
         if marker:
-            if isinstance(marker, six.text_type):
-                marker = marker.encode('utf-8')
-            marker = urllib.unquote(marker)
+            '''if isinstance(marker, six.text_type):
+                marker = marker.encode('utf-8')'''
+            marker = parse.unquote(marker)
         more_results= rs.is_truncated
 
 class BucketListResultSet(object):

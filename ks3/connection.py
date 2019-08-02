@@ -8,7 +8,6 @@
 
 import os
 import time
-import urllib
 import xml.sax
 
 from ks3 import auth
@@ -20,6 +19,11 @@ from ks3.exception import S3ResponseError, S3CreateError, KS3ClientError
 from ks3.http import make_request
 from ks3.provider import Provider
 from ks3.resultset import ResultSet
+
+try:
+    import urllib.parse as parse  # for Python 3
+except ImportError:
+    import urllib as parse  # for Python 2
 
 def check_lowercase_bucketname(n):
     """
@@ -68,11 +72,11 @@ class _CallingFormat(object):
         path = ''
         if bucket != '':
             path = '/' + bucket
-        return path + '/%s' % urllib.quote(key)
+        return path + '/%s' % parse.quote(key)
 
     def build_path_base(self, bucket, key=''):
         key = utils.get_utf8_value(key)
-        return '/%s' % urllib.quote(key)
+        return '/%s' % parse.quote(key)
 
 
 class OrdinaryCallingFormat(_CallingFormat):
@@ -85,7 +89,7 @@ class OrdinaryCallingFormat(_CallingFormat):
         path_base = '/'
         if bucket:
             path_base += "%s/" % bucket
-        return path_base + urllib.quote(key)
+        return path_base + parse.quote(key)
 
 
 class SubdomainCallingFormat(_CallingFormat):
@@ -333,8 +337,8 @@ class Connection(object):
         if version_id is not None:
             extra_qp.append("versionId=%s" % version_id)
         if response_headers:
-            for k, v in response_headers.items():
-                extra_qp.append("%s=%s" % (k, urllib.quote(v)))
+            for k, v in list(response_headers.items()):
+                extra_qp.append("%s=%s" % (k, parse.quote(v)))
         if extra_qp:
             delimiter = '?' if '?' not in auth_path else '&'
             auth_path += delimiter + '&'.join(extra_qp)
@@ -344,22 +348,22 @@ class Connection(object):
 
         c_string = auth.canonical_string(method, bucket, key, headers=headers, expires=expires)
         b64_hmac = auth.encode(self.access_key_secret, c_string)
-        encoded_canonical = urllib.quote(b64_hmac, safe='')
+        encoded_canonical = parse.quote(b64_hmac, safe='')
         self.calling_format.build_path_base(bucket, key)
         if query_auth:
             encode_ak = self.access_key_id
-            #encode_ak = urllib.quote(self.access_key_id)
+            #encode_ak = parse.quote(self.access_key_id)
             #print 'encode_ak:%s'%encode_ak
             query_part = '?' + self.QueryString % (encoded_canonical, expires, encode_ak)
         else:
             query_part = ''
         if headers:
             hdr_prefix = self.provider.header_prefix
-            for k, v in headers.items():
+            for k, v in list(headers.items()):
                 if k.startswith(hdr_prefix):
                     # headers used for sig generation must be
                     # included in the url also.
-                    extra_qp.append("%s=%s" % (k, urllib.quote(v)))
+                    extra_qp.append("%s=%s" % (k, parse.quote(v)))
         if extra_qp:
             delimiter = '?' if not query_part else '&'
             query_part += delimiter + '&'.join(extra_qp)

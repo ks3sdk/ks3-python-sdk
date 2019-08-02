@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 #! usr/bin/python #coding=utf-8
-
 from Crypto.Cipher import AES
 from Crypto import Random
 import time
@@ -46,7 +45,7 @@ class Crypts(object):
         cryptor = AES.new(self.key,AES.MODE_CBC,iv)
         pad_num = self.block_size-(len(content)%(self.block_size))
         pad_content_char = self.pad_dict[pad_num]
-        pad = lambda s: s + (AES.block_size - len(s) % AES.block_size) * pad_content_char
+        pad = lambda s: s + ((AES.block_size - len(s) % AES.block_size) * pad_content_char).encode()
         self.pad_num = pad_num
         #identifier + content may still not a multiple of 16, add extra '0' after the first pad
         return cryptor.encrypt(pad(content))

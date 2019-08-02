@@ -67,18 +67,18 @@ class BucketLogging(object):
     def to_xml(self):
         # caller is responsible to encode to utf-8
         s = u'<?xml version="1.0" encoding="UTF-8"?>'
-        #s += u'<BucketLoggingStatus xmlns="http://doc.s3.amazonaws.com/2006-03-01">'
-        s += u'<BucketLoggingStatus xmlns="http://ks3.ksyun.com">'
+        s += u'<BucketLoggingStatus xmlns="http://s3.amazonaws.com/doc/2006-03-01/">'
+        #s += '<BucketLoggingStatus xmlns="http://ks3.ksyun.com">'
         if self.target is not None:
-            s += u'<LoggingEnabled>'
-            s += u'<TargetBucket>%s</TargetBucket>' % self.target
+            s += '<LoggingEnabled>'
+            s += '<TargetBucket>%s</TargetBucket>' % self.target
             prefix = self.prefix or ''
-            s += u'<TargetPrefix>%s</TargetPrefix>' % xml.sax.saxutils.escape(prefix)
+            s += '<TargetPrefix>%s</TargetPrefix>' % xml.sax.saxutils.escape(prefix)
             if self.grants:
                 s += '<TargetGrants>'
                 for grant in self.grants:
                     s += grant.to_xml()
                 s += '</TargetGrants>'
-            s += u'</LoggingEnabled>'
-        s += u'</BucketLoggingStatus>'
+            s += '</LoggingEnabled>'
+        s += '</BucketLoggingStatus>'
         return s

@@ -35,7 +35,7 @@ class KS3ServerError(Exception):
             try:
                 self.body = self.body.decode('utf-8')
             except UnicodeDecodeError:
-                print 'Unable to decode body from bytes!'
+                print('Unable to decode body from bytes!')
 
         # Attempt to parse the error response. If body isn't present,
         # then just ignore the error response.

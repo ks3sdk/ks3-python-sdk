@@ -46,7 +46,7 @@ def merge_meta(headers, metadata, provider=None):
         provider = ks3.provider.get_default()
     metadata_prefix = provider.metadata_prefix
     final_headers = headers.copy()
-    for k in metadata.keys():
+    for k in list(metadata.keys()):
         if k.lower() in ks3.key.Key.base_user_settable_fields:
             final_headers[k] = metadata[k]
         else:
@@ -107,4 +107,4 @@ def compute_encrypted_md5(fp, buf_size=8192, hash_algorithm=md5):
     # data_size based on bytes read.
     SEEK_SET = getattr(io, 'SEEK_SET', 0)
     fp.seek(SEEK_SET)
-    return (hex_digest, base64_digest)
+    return (hex_digest,base64_digest)

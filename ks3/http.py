@@ -1,8 +1,11 @@
-
-import httplib
 import time
-import urllib
 import re
+try:
+    import http.client as httpcli  # for Python 3
+    import urllib.parse as parse
+except ImportError:
+    import httplib as httpcli # for Python 2
+    import urllib as parse
 
 from ks3.auth import canonical_string, add_auth_header, encode
 
@@ -13,7 +16,7 @@ class CallingFormat:
 
 def merge_meta(headers, metadata):
     final_headers = headers.copy()
-    for k in metadata.keys():
+    for k in list(metadata.keys()):
         final_headers["x-kss-" + "meta-" + k] = metadata[k]
 
     return final_headers
@@ -21,10 +24,10 @@ def merge_meta(headers, metadata):
 
 def query_args_hash_to_string(query_args):    
     pairs = []
-    for k, v in query_args.items():
+    for k, v in list(query_args.items()):
         piece = k
         if v != None:
-            piece += "=%s" % urllib.quote_plus(str(v).encode('utf-8'))
+            piece += "=%s" % parse.quote_plus(str(v).encode('utf-8'))
         pairs.append(piece)
 
     return '&'.join(pairs)
@@ -36,7 +39,7 @@ def get_object_url(age, bucket="", key="", secret_access_key="", access_key_id="
     c_string = canonical_string("GET", bucket, key, query_args, headers)    
     path = c_string.split("\n")[-1]
     
-    signature = urllib.quote_plus(encode(secret_access_key, c_string))
+    signature = parse.quote_plus(encode(secret_access_key, c_string))
     if "?" in path:
         url = "http://kss.ksyun.com%s&Expires=%s&AccessKeyId=%s&Signature=%s" % \
             (path, expire, access_key_id, signature)
@@ -66,7 +69,7 @@ def make_request(server, port, access_key_id, access_key_secret, method,
             path += "/%s" % bucket
 
     #TODO
-    encode_key = urllib.quote_plus(key.encode('utf-8'))
+    encode_key = parse.quote_plus(key.encode('utf-8'))
     if '%20' in encode_key:
        encode_key = encode_key.replace('%20','+')
 
@@ -90,9 +93,9 @@ def make_request(server, port, access_key_id, access_key_secret, method,
     host = "%s:%d" % (server, port)
     
     if (is_secure):
-        connection = httplib.HTTPSConnection(host)
+        connection = httpcli.HTTPSConnection(host)
     else:
-        connection = httplib.HTTPConnection(host)
+        connection = httpcli.HTTPConnection(host)
 
     final_headers = merge_meta(headers, metadata)
     if method == "PUT" and "Content-Length" not in final_headers and not data:
