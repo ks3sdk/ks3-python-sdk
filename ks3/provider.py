@@ -263,7 +263,7 @@ class Provider(object):
             # datetime docs.
             seconds_left = (
                 (delta.microseconds + (delta.seconds + delta.days * 24 * 3600)
-                 * 10 ** 6) / 10 ** 6)
+                 * 10 ** 6) // 10 ** 6)
             if seconds_left < (5 * 60):
                 ks3.log.debug("Credentials need to be refreshed.")
                 return True

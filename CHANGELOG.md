@@ -1,3 +1,6 @@
+v.1.0.11/2019-07-31
+    兼容了python2和python3
+    修复了put bucket acl和put bucket logging的bug
 v.1.0.10/2018-05-22
     修复分块上传listPart的bug
 v.1.0.9/2018-04-18
