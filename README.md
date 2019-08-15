@@ -1,75 +1,52 @@
-##  KS3 SDK for python使用指南
----
-###目录
-* [开发前准备](#开发前准备)
- * [安装依赖模块](#安装依赖模块)
- * [安装python sdk](#安装python-sdk)
- * [初始化connection](#初始化connection)
- * [运行环境](#运行环境)
-
-
-* [SDK介绍及使用](#SDK介绍及使用)
- * [资源管理操作](#资源管理操作)
- * [Service操作](#Service操作)
- * [Bucket操作](#Bucket操作)
- * [Object操作](#Object操作)
- * [客户端文件加密](#客户端文件加密)
-
+# KS3 SDK for python使用指南
 ---
 
-###  <span id="开发前准备">开发前准备</span>
-#### <span id="安装依赖模块">安装依赖模块</span>
+## 开发前准备
+### 安装依赖模块
 
-    pip install six
+	pip install six
 
 
-#### <span id="安装python-sdk"> 安装python sdk</span>
-##### 在线安装
+### 安装python sdk
+#### 在线安装
 
-    pip install ks3sdk
-
-##### 本地安装
-
+	pip install ks3sdk
+	
+#### 本地安装
 1、通过git下载SDK到本地
 
-    git clone https://github.com/ks3sdk/ks3-python-sdk.git
+	git clone https://github.com/ks3sdk/ks3-python-sdk.git
 
 
 2、进入ks3-python-sdk目录
 
-    cd  ks3-python-sdk
+	cd ks3-python-sdk
 
 3、安装SDK
 
-    python setup.py install
+	python setup.py install
 
-#### <span id="初始化connection">初始化connection</span>
+### 初始化connection
 
     from ks3.connection import Connection
     ak = 'YOUR_ACCESS_KEY'
     sk = 'YOUR_SECRET_KEY'
     c = Connection(ak, sk, host='YOUR_REGION_ENDPOINT', is_secure=False, domain_mode=False)
 
-参数说明
+*常用参数说明*
 
-* ak：金山云提供的ACCESS KEY ID
++ ak：金山云提供的ACCESS KEY ID
++ sk：金山云提供的SECRET KEY ID
++ host：金山云提供的各个Region的域名（例 ks3-cn-beijing.ksyun.com）,具体定义可参考 [API接口文档-Region(区域)](https://docs.ksyun.com/read/latest/65/_book/index.html)
++ is_secure：是否通过HTTPS协议访问Ks3，True:启用  False:关闭
++ domain_mode：是否使用自定义域名访问Ks3（host填写自定义域名），True:是 False:否
 
-* sk：金山云提供的SECRET KEY ID
+### 运行环境
+适用于2.6、2.7、3.3、3.4、3.5、3.6、3.7的Python版本
 
-* host：金山云提供的各个Region的域名（例 ks3-cn-beijing.ksyun.com）,具体定义可参考 [API接口文档-Region(区域)](https://docs.ksyun.com/directories/1782)。也可以是用户自定义域名，如果是用户自定义域名，需要将domain_mode设置为True。
-
-* is_secure：是否通过HTTPS协议访问Ks3，True:启用 False:关闭。
-
-* domain_mode：是否使用自定义域名访问Ks3（host填写自定义域名），True:是 False:否。
-
-####  <span id="运行环境">运行环境</span>
-适用于2.6、2.7、3.3、3.4、3.5、3.6、3.7版本。
-
-
-###  <span id="SDK介绍及使用">SDK介绍及使用</span>
-
-####  <span id="资源管理操作">资源管理操作</span>
-* [List Buckets](#list-bucket) 列出客户所有的Bucket信息
+## SDK介绍及使用
+### 资源管理操作
+* [List Buckets](#list-buckets) 列出客户所有的Bucket信息
 * [Create Bucket](#create-bucket) 创建一个新的Bucket
 * [Delete Bucket](#delete-bucket) 删除指定Bucket
 * [Get Bucket ACL](#get-bucket-acl) 获取Bucket的ACL
@@ -79,14 +56,15 @@
 * [Put Object](#put-object) 上传Object数据
 * [Put Object Copy](#put-object-copy) 复制Object数据
 * [Delete Object](#delete-object) 删除Object数据
-* [List Object](#list-object) 列举Bucket内的Object
-* [Get Object ACL](#get-object-acl) 获得Object的acl
+* [List Objects](#list-objects) 列举Bucket内的Object
+* [Get Object ACL](#get-object-acl) 获得Bucket的acl
 * [Put Object ACL](#put-object-acl) 上传object的acl
 * [Upload Part](#upload-part) 上传分块
 * [Generate URL](#generate-url) 生成下载外链
-### <span id="Service操作">Service操作</span>
 
-#### <span id="list-bucket">List Buckets：</span>
+### Service操作
+
+#### List Buckets：
 
 *列出客户所有的 Bucket 信息*
 
@@ -98,9 +76,9 @@
     for b in buckets:
     	print(b.name)
 
-### <span id="Bucket操作">Bucket操作</span>
+### Bucket操作
 
-#### <span id="create-bucket">Create Bucket： </span>
+#### Create Bucket： 
 
 *创建一个新的Bucket*
 
@@ -115,7 +93,7 @@
 
 注：这里如果出现409 conflict错误，说明请求的bucket name有冲突，因为bucket name是全局唯一的
 
-#### <span id="delete-bucket">Delete Bucket:</span>
+#### Delete Bucket:
 
 *删除指定Bucket*
 
@@ -140,7 +118,7 @@
         k.delete()
     c.delete_bucket(bucket_name)
 
-#### <span id="get-bucket-acl">Get Bucket ACL:</span>
+#### Get Bucket ACL:
 
 *获取Bucket的ACL*
 
@@ -154,7 +132,7 @@
     for grant in policy.acl.grants:
     	print(grant.permission, grant.display_name, grant.email_address, grant.id)   
 
-#### <span id="put-bucket-acl">Put Bucket ACL:</span>
+#### Put Bucket ACL:
 
 *设置Bucket的ACL*
 
@@ -168,9 +146,9 @@
     #设置bucket的权限, private or public-read or public-read-write
     b.set_acl("public-read")
 
-### <span id="Object操作">Object操作</span>
+### Object操作
 
-#### <span id="head-object">Head Object:</span>
+#### Head Object:
 *获取Object元信息*
 
 获取Object元数据信息（大小、最后更新时间等）
@@ -190,7 +168,7 @@
     except:
     	pass  
 
-#### <span id="get-object">Get Object：</span>
+#### Get Object：
 *下载该Object数据*
  
 下载object，并且作为字符串返回
@@ -208,14 +186,14 @@
 	    s = k.get_contents_as_string().decode()
 	    print(s)
     except:
-	    pass
+	    pass # 异常处理
 
 下载object，并且保存到文件中
 
 	#保存到文件
 	k.get_contents_to_filename("SAVED_FILE_PATH")
 
-#### <span id="put-object">Put Object</span>
+#### Put Object
 *上传Object数据* 
 
 将指定目录下某一个文件上传，同时可以指定文件ACL
@@ -255,8 +233,8 @@ headers = {"x-kss-storage-class": "STANDARD_IA"}
 resp = k.set_contents_from_filename(filepath, policy="private", headers=headers)
 ```
  
-#### <span id="put-object-copy">Put Object Copy:</span>
-*复制Object数据*
+#### Put Object Copy
+*复制Object数据* 
 
 将指定Bucket下的文件复制到本Bucket下（需要对源Bucket下的文件具有读权限）
 
@@ -273,7 +251,7 @@ resp = k.set_contents_from_filename(filepath, policy="private", headers=headers)
     except:
         pass
     
-#### <span id="delete-object">Delete Object:</span>
+#### Delete Object
 *删除Object数据*
 
     from ks3.connection import Connection
@@ -289,7 +267,7 @@ resp = k.set_contents_from_filename(filepath, policy="private", headers=headers)
     except:
         pass  
 	
-#### <span id="list-object">List Object</span>
+#### List Objects
 *列举Bucket内的文件或者目录*
 
     from ks3.connection import Connection
@@ -312,7 +290,7 @@ resp = k.set_contents_from_filename(filepath, policy="private", headers=headers)
 
     keys = b.list(prefix="PREFIX")
 
-#### <span id="get-object-acl">Get Object ACL</span>
+#### Get Object ACL
 *获得Object的acl*
 
     from ks3.connection import Connection
@@ -326,12 +304,12 @@ resp = k.set_contents_from_filename(filepath, policy="private", headers=headers)
     policy = b.get_acl(key_name)
     print(policy.to_xml())
 
-#### <span id="put-object-acl">Put Object ACL</span>
+#### Put Object ACL
 
 	#object policy : 'private' or 'public-read'
 	b.set_acl("public-read", test_key)
 
-#### <span id="upload-part">Upload Part：</span>
+#### Upload Part：
 *分块上传*
 
 如果你想上传一个大文件，你可以将它分成几个小份，逐个上传，ks3会按照顺序把它们合成一个最终的object。通过SDK进行分块上传能够保障数据传到ks3的正确性，无需另外做数据校验。
@@ -391,7 +369,7 @@ mp = b.initiate_multipart_upload(os.path.basename(source_path), policy="private"
         for i in p:
             print(i.part_number, i.size, i.etag, i.last_modified)
 
-#### <span id="generate-url">Generate URL</span>
+#### Generate URL
 *生成下载外链地址*
 
 对私密属性的文件生成下载外链（该链接具有时效性）
@@ -410,11 +388,10 @@ mp = b.initiate_multipart_upload(os.path.basename(source_path), policy="private"
         print(url)
 
 指定时间过期
-```	
-k.generate_url(1492073594,expires_in_absolute=True) # 1492073594为Unix Time
-```
+	
+	k.generate_url(1492073594,expires_in_absolute=True) # 1492073594为Unix Time
 
-## <span id="客户端文件加密">客户端文件加密</span>
+## 客户端文件加密
 如果您有上传前先加密数据的需求，可以考虑使用加密模式。
 ### 环境要求
 使用加密客户端需要安装pycrypto。
@@ -452,9 +429,7 @@ Crypts.generate_key('your_path', 'key_name')
     print("Result:",s)
 
 #### 分块上传
-
->注意：加密客户端的分块上传不支持对文件的并行上传！分块上传时必须依次序上传每一块，否则数据将无法解密。
-
+*加密客户端的分块上传不支持对文件的并行上传！分块上传时必须依次序上传每一块，否则数据将无法解密。*<br />
 示例1：使用FileChunkIO进行分块上传。与普通客户端的方法基本一致，和put一样只需在初始化时增加参数。
 
     c = Connection(ak, sk, host,is_secure=False, domain_mode=False, local_encrypt=True, local_key_path="your_key_path")
