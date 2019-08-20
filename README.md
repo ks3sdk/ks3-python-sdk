@@ -341,14 +341,17 @@ resp = k.set_contents_from_filename(filepath, policy="private", headers=headers)
     # Send the file parts, using FileChunkIO to create a file-like object
     # that points to a certain byte range within the original file. We
     # set bytes to never exceed the original file size.
-    for i in range(chunk_count+1):
-         offset = chunk_size * i 
-         bytes = min(chunk_size, source_size - offset)
-         with FileChunkIO(source_path, 'r', offset=offset,bytes=bytes) as fp: 
-             mp.upload_part_from_file(fp, part_num=i + 1) 
-     
-    # Finish the upload
-    mp.complete_upload()
+    try:
+        for i in range(chunk_count + 1):
+            offset = chunk_size * i
+            bytes = min(chunk_size, source_size - offset)
+            with FileChunkIO(source_path, 'r', offset=offset, bytes=bytes) as fp:
+                mp.upload_part_from_file(fp, part_num=i + 1)
+        ret = mp.complete_upload()
+        if ret and ret.status == 200:
+            print("上传成功")
+    except:
+        pass  # 异常处理
 以低频存储方式上传，需要在initiate_multipart_upload阶段设置
 ```
 //x-kss-storage-class有效值为"STANDARD"、"STANDARD_IA"。"STANDARD"表示标准存储，"STANDARD_IA"表示低频存储，如果不指定，默认为标准存储。
@@ -452,17 +455,21 @@ Crypts.generate_key('your_path', 'key_name')
     # Use a chunk size of 50 MiB (feel free to change this)
     chunk_size = 52428800
     chunk_count = int(math.ceil(source_size // chunk_size))
-    for i in range(chunk_count + 1):
-    	offset = chunk_size * i
-        last = False
-        bytes = min(chunk_size, source_size - offset)
-        if i == chunk_count + 1:
-            last = True
-        with FileChunkIO(source_path, 'r', offset=offset,
-                         bytes=bytes) as fp:
-            mp.upload_part_from_file(fp, part_num=i + 1, is_last_part=last)
+    try:
+        for i in range(chunk_count + 1):
+            offset = chunk_size * i
+            last = False
+            bytes = min(chunk_size, source_size - offset)
+            if i == chunk_count + 1:
+                last = True
+            with FileChunkIO(source_path, 'r', offset=offset,bytes=bytes) as fp:
+                mp.upload_part_from_file(fp, part_num=i + 1, is_last_part=last)
 
-    mp.complete_upload()
+        ret = mp.complete_upload()
+        if ret and ret.status == 200:
+            print("上传成功")
+    except:
+        pass
 
 
 
