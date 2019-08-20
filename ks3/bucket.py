@@ -610,13 +610,14 @@ class Bucket(object):
                                                 headers=headers, data=xml_body)
         contains_error = False
         body = response.read().decode('utf-8')
+        resp = CompleteMultiPartUpload(self)
+        resp.status = response.status
         # Some errors will be reported in the body of the response
         # even though the HTTP response code is 200.  This check
         # does a quick and dirty peek in the body for an error element.
         if body.find('<Error>') > 0:
             contains_error = True
         if response.status == 200 and not contains_error:
-            resp = CompleteMultiPartUpload(self)
             h = handler.XmlHandler(resp, self)
             if not isinstance(body, bytes):
                 body = body.encode('utf-8')
@@ -629,10 +630,10 @@ class Bucket(object):
             k.handle_encryption_headers(response)
             resp.version_id = k.version_id
             resp.encrypted = k.encrypted
-            return resp
         else:
             raise self.connection.provider.storage_response_error(
                 response.status, response.reason, body)
+        return resp
 
     def cancel_multipart_upload(self, key_name, upload_id, headers=None):
         """

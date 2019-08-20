@@ -224,7 +224,8 @@ class TestMultipartUploadObject(unittest.TestCase):
                              bytes=bytes) as fp:
                 mp.upload_part_from_file(fp, part_num=i + 1)
 
-        mp.complete_upload()
+        r = mp.complete_upload()
+        print(r.status)
 
 class TestEncryptionMultipartUploadObject(unittest.TestCase):
     def test_encryption_multipart_upload(self):
