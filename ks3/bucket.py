@@ -629,6 +629,7 @@ class Bucket(object):
             k.handle_encryption_headers(response)
             resp.version_id = k.version_id
             resp.encrypted = k.encrypted
+            resp.status = response.status
             return resp
         else:
             raise self.connection.provider.storage_response_error(

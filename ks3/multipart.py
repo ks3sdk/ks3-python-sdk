@@ -30,6 +30,7 @@ class CompleteMultiPartUpload(object):
         self.etag = None
         self.version_id = None
         self.encrypted = None
+        self.status = None
 
     def __repr__(self):
         return '<CompleteMultiPartUpload: %s.%s>' % (self.bucket_name,
