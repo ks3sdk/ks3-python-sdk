@@ -215,16 +215,19 @@ class TestMultipartUploadObject(unittest.TestCase):
 
         # chunk_size = 5242880
         chunk_size = 5242880
-        chunk_count = int(math.ceil(source_size // chunk_size))
+        chunk_count = int(math.ceil(source_size * 1.0 / chunk_size * 1.0))
 
-        for i in range(chunk_count + 1):
-            offset = chunk_size * i
-            bytes = min(chunk_size, source_size - offset)
-            with FileChunkIO(source_path, 'r', offset=offset,
-                             bytes=bytes) as fp:
-                mp.upload_part_from_file(fp, part_num=i + 1)
-
-        mp.complete_upload()
+        try:
+            for i in range(chunk_count):
+                offset = chunk_size * i
+                bytes = min(chunk_size, source_size - offset)
+                with FileChunkIO(source_path, 'r', offset=offset, bytes=bytes) as fp:
+                    mp.upload_part_from_file(fp, part_num=i + 1)
+            ret = mp.complete_upload()
+            if ret and ret.status == 200:
+                print("上传成功")
+        except:
+            pass  # 异常处理
 
 class TestEncryptionMultipartUploadObject(unittest.TestCase):
     def test_encryption_multipart_upload(self):
@@ -240,19 +243,23 @@ class TestEncryptionMultipartUploadObject(unittest.TestCase):
         source_size = os.stat(source_path).st_size
         mp = bucket.initiate_multipart_upload(os.path.basename(source_path), calc_encrypt_md5=False)
         chunk_size = 5242880
-        chunk_count = int(math.ceil(source_size // chunk_size))
+        chunk_count = int(math.ceil(source_size*1.0 / chunk_size*1.0))
         print(chunk_count)
-        for i in range(chunk_count + 1):
-            offset = chunk_size * i
-            last = False
-            bytes = min(chunk_size, source_size - offset)
-            if i == chunk_count + 1:
-                last = True
-            with FileChunkIO(source_path, 'r', offset=offset,
-                             bytes=bytes) as fp:
-                mp.upload_part_from_file(fp, part_num=i + 1, is_last_part=last)
+        try:
+            for i in range(chunk_count):
+                offset = chunk_size * i
+                last = False
+                bytes = min(chunk_size, source_size - offset)
+                if i + 1 == chunk_count:
+                    last = True
+                with FileChunkIO(source_path, 'r', offset=offset,bytes=bytes) as fp:
+                    mp.upload_part_from_file(fp, part_num=i + 1, is_last_part=last)
 
-        mp.complete_upload()
+            ret = mp.complete_upload()
+            if ret and ret.status == 200:
+                print("上传成功")
+        except:
+            pass
 
 class TestAbortMultipartUpload(unittest.TestCase):
     def test_abort_multipart_upload(self):
