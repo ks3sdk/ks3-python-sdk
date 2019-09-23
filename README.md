@@ -336,13 +336,13 @@ resp = k.set_contents_from_filename(filepath, policy="private", headers=headers)
     mp = b.initiate_multipart_upload(os.path.basename(source_path))
     # Use a chunk size of 50 MiB (feel free to change this)
     chunk_size = 52428800
-    chunk_count = int(math.ceil(source_size // chunk_size))
+    chunk_count = int(math.ceil(source_size*1.0 / chunk_size*1.0))
 
     # Send the file parts, using FileChunkIO to create a file-like object
     # that points to a certain byte range within the original file. We
     # set bytes to never exceed the original file size.
     try:
-        for i in range(chunk_count + 1):
+        for i in range(chunk_count):
             offset = chunk_size * i
             bytes = min(chunk_size, source_size - offset)
             with FileChunkIO(source_path, 'r', offset=offset, bytes=bytes) as fp:
@@ -454,13 +454,13 @@ Crypts.generate_key('your_path', 'key_name')
     mp = bucket.initiate_multipart_upload(os.path.basename(source_path))
     # Use a chunk size of 50 MiB (feel free to change this)
     chunk_size = 52428800
-    chunk_count = int(math.ceil(source_size // chunk_size))
+    chunk_count = int(math.ceil(source_size*1.0 / chunk_size*1.0))
     try:
-        for i in range(chunk_count + 1):
+        for i in range(chunk_count):
             offset = chunk_size * i
             last = False
             bytes = min(chunk_size, source_size - offset)
-            if i == chunk_count + 1:
+            if i +1 == chunk_count:
                 last = True
             with FileChunkIO(source_path, 'r', offset=offset,bytes=bytes) as fp:
                 mp.upload_part_from_file(fp, part_num=i + 1, is_last_part=last)
