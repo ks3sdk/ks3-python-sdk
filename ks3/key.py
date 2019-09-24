@@ -700,8 +700,10 @@ class Key(object):
                     last_iv = byte[-crypt_handler.block_size:]
                     if counter == total_part:
                         # Special process of the last part with check code appending to it's end.
-                        full_content = crypt_handler.decrypt(byte,user_iv).decode()
+                        full_content = crypt_handler.decrypt(byte,user_iv)
                         pad_content_char = full_content[-1]
+                        if isinstance(pad_content_char, int) :
+                            pad_content_char = chr(pad_content_char)
                         for key in crypt_handler.pad_dict:
                             if crypt_handler.pad_dict[key] == pad_content_char:
                                 pad_content_char = key
