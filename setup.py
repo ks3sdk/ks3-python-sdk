@@ -11,6 +11,7 @@ setup(
     version='1.0.13',
     description='Kingsoft Standard Storage Service SDK',
     long_description=readme,
+    long_description_content_type='text/markdown',
     packages=['ks3'],
     install_requires=[
         'six'
