@@ -563,7 +563,10 @@ class Key(object):
             if not replace:
                 if self.bucket.lookup(self.name):
                     return
-            from ks3.encryption import Crypts
+            try:
+                from ks3.encryption import Crypts
+            except:
+                pass
             if self.bucket.connection.local_encrypt and self.size:
                 if not crypt_context:
                     crypt_context = Crypts(self.bucket.connection.key)
