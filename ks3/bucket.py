@@ -199,16 +199,16 @@ class Bucket(object):
         """
         Check to see if a particular key exists within the bucket.
         """
-        #if validate is False:
-        #    if headers or version_id or response_headers:
-        #        raise BotoClientError(
-        #            "When providing 'validate=False', no other params " + \
-        #            "are allowed."
-        #        )
+        if validate is False:
+           # if headers or version_id or response_headers:
+           #     raise BotoClientError(
+           #         "When providing 'validate=False', no other params " + \
+           #         "are allowed."
+           #     )
 
-        #    # This leans on the default behavior of ``new_key`` (not hitting
-        #    # the service). If that changes, that behavior should migrate here.
-        #    return self.new_key(key_name)
+           # This leans on the default behavior of ``new_key`` (not hitting
+           # the service). If that changes, that behavior should migrate here.
+           return self.new_key(key_name)
 
         query_args_l = {}
         if version_id:
@@ -230,7 +230,7 @@ class Bucket(object):
         # support Range gets, which return status 206:
         if response.status // 100 == 2:
             k = Key(self)
-            #provider = self.connection.provider
+            # provider = self.connection.provider
             #k.metadata = boto.utils.get_aws_metadata(response.msg, provider)
             for field in Key.base_fields:
                 k.__dict__[field.lower().replace('-', '_')] = \
@@ -250,6 +250,7 @@ class Bucket(object):
             k.handle_restore_headers(response)
             k.handle_addl_headers(response.getheaders())
             k.handle_user_metas(response)
+            k.handle_storage_class(response)
             return k, response
         else:
             if response.status == 404:

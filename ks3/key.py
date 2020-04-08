@@ -69,7 +69,7 @@ class Key(object):
         self.is_latest = False
         self.last_modified = None
         self.owner = None
-        self._storage_class = None
+        self.storage_class = None
         self.path = None
         self.resp = None
         self.mode = None
@@ -302,7 +302,7 @@ class Key(object):
         #headers['User-Agent'] = UserAgent
         # If storage_class is None, then a user has not explicitly requested
         # a storage class, so we can assume STANDARD here
-        if self._storage_class not in [None, 'STANDARD']:
+        if self.storage_class not in [None, 'STANDARD']:
             headers[provider.storage_class_header] = self.storage_class
         if find_matching_headers('Content-Encoding', headers):
             self.content_language = merge_headers_by_name(
@@ -777,6 +777,8 @@ class Key(object):
             self.handle_encryption_headers(self.resp)
             self.handle_restore_headers(self.resp)
             self.handle_addl_headers(self.resp.getheaders())
+            self.handle_user_metas(self.resp)
+            self.handle_storage_class(self.resp)
 
 
     def open_write(self, headers=None, override_num_retries=None):
@@ -961,6 +963,14 @@ class Key(object):
             if reg_match:
                 self.user_meta[header_key] = header_value
 
+    def handle_storage_class(self, response):
+        provider = self.bucket.connection.provider
+        if provider:
+            sc = response.getheader(provider.storage_class_header)
+            if sc:
+                self.storage_class = sc
+            else:
+                self.storage_class = "STANDARD"
 
     def compute_md5(self, fp, size=None):
         hex_digest, b64_digest, data_size = compute_md5(fp, size=size)
