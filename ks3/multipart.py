@@ -292,7 +292,7 @@ class MultiPartUpload(object):
                 sum += self.size_accumulator[i]
         return sum
     def copy_part_from_key(self, src_bucket_name, src_key_name, part_num,
-                           start=None, end=None, src_version_id=None,
+                           start=None, end=None,
                            headers=None):
         """
         Copy another part of this MultiPart Upload.
@@ -312,9 +312,6 @@ class MultiPartUpload(object):
         :type end: int
         :param end: Zero-based byte offset to copy to
 
-        :type src_version_id: string
-        :param src_version_id: version_id of source object to copy from
-
         :type headers: dict
         :param headers: Any headers to pass along in the request
         """
@@ -331,8 +328,6 @@ class MultiPartUpload(object):
             headers[provider.copy_source_range_header] = rng
         return self.bucket.copy_key(self.key_name, src_bucket_name,
                                     src_key_name,
-                                    src_version_id=src_version_id,
-                                    storage_class=None,
                                     headers=headers,
                                     query_args=query_args)
 
